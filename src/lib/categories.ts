@@ -15,9 +15,9 @@ export interface CategoryMeta {
 export const CATEGORY_META: CategoryMeta[] = [
   { slug: 'chicken', label: 'Chicken', Icon: Drumstick, tint: 'tint-chicken', blurb: 'Reliable supply for your kitchen.',            active: true },
   { slug: 'eggs',    label: 'Eggs',    Icon: Egg,       tint: 'tint-eggs',    blurb: 'Fresh eggs at competitive prices.',            active: true },
-  { slug: 'fish',    label: 'Fish',    Icon: Fish,      tint: 'tint-fish',    blurb: 'Selected fish from our supply network.',       active: true },
-  { slug: 'rice',    label: 'Rice',    Icon: Wheat,     tint: 'tint-rice',    blurb: 'Bulk rice for businesses that buy regularly.', active: true },
-  { slug: 'beans',   label: 'Beans',   Icon: Sprout,    tint: 'tint-beans',   blurb: 'Quality beans at a better buying price.',      active: true },
+  { slug: 'fish',    label: 'Fish',    Icon: Fish,      tint: 'tint-fish',    blurb: 'Selected fish from our supply network.',       active: false },
+  { slug: 'rice',    label: 'Rice',    Icon: Wheat,     tint: 'tint-rice',    blurb: 'Bulk rice for businesses that buy regularly.', active: false },
+  { slug: 'beans',   label: 'Beans',   Icon: Sprout,    tint: 'tint-beans',   blurb: 'Quality beans at a better buying price.',      active: false },
 ]
 
 export const ACTIVE_CATEGORY_META = CATEGORY_META.filter((c) => c.active)

@@ -290,10 +290,12 @@ function FeaturedProducts() {
     try {
       const { createClient } = require('@/lib/supabase/client')
       const supabase = createClient()
+      const activeSlugs = ACTIVE_CATEGORY_META.map((c) => c.slug)
       supabase
         .from('products')
         .select('id, name, category, unit, image_url, price')
         .eq('is_available', true)
+        .in('category', activeSlugs) // never tease a category that's disabled on /store
         .limit(8)
         .then(({ data }: { data: typeof products | null }) => {
           if (data && data.length > 0) setProducts(data as typeof products)
