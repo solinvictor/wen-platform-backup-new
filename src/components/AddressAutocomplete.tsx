@@ -10,21 +10,27 @@ export interface AddressSuggestion {
   lng: number
 }
 
-interface PhotonProperties {
+interface LocationIQAddress {
   name?: string
-  street?: string
-  housenumber?: string
-  district?: string
+  road?: string
+  house_number?: string
+  neighbourhood?: string
+  suburb?: string
   city?: string
+  city_district?: string
+  town?: string
+  village?: string
   county?: string
   state?: string
   country?: string
-  countrycode?: string
+  country_code?: string
 }
 
-interface PhotonFeature {
-  properties?: PhotonProperties
-  geometry?: { coordinates?: number[] }
+interface LocationIQFeature {
+  display_name?: string
+  lat?: string
+  lon?: string
+  address?: LocationIQAddress
 }
 
 interface Props {
@@ -48,36 +54,37 @@ function uniqueParts(parts: Array<string | undefined>) {
     })
 }
 
-function toSuggestion(feature: PhotonFeature): AddressSuggestion | null {
-  const properties = feature.properties
-  const coordinates = feature.geometry?.coordinates
-  if (!properties || !coordinates || coordinates.length < 2) return null
-
-  const [lng, lat] = coordinates
+function toSuggestion(feature: LocationIQFeature): AddressSuggestion | null {
+  const address = feature.address
+  const lat = feature.lat != null ? parseFloat(feature.lat) : NaN
+  const lng = feature.lon != null ? parseFloat(feature.lon) : NaN
   if (
-    typeof lat !== 'number' || typeof lng !== 'number'
-    || !Number.isFinite(lat) || !Number.isFinite(lng)
+    !Number.isFinite(lat) || !Number.isFinite(lng)
     || lat < -90 || lat > 90 || lng < -180 || lng > 180
   ) return null
 
-  const isNigeria = properties.countrycode?.toUpperCase() === 'NG'
-    || properties.country?.toLocaleLowerCase() === 'nigeria'
+  const isNigeria = address?.country_code?.toUpperCase() === 'NG'
+    || address?.country?.toLocaleLowerCase() === 'nigeria'
   if (!isNigeria) return null
 
-  const street = uniqueParts([properties.housenumber, properties.street]).join(' ')
-  const primary = properties.name && properties.name.toLocaleLowerCase() !== properties.street?.toLocaleLowerCase()
-    ? properties.name
-    : street || properties.name
+  const street = uniqueParts([address?.house_number, address?.road]).join(' ')
+  const primary = address?.name && address.name.toLocaleLowerCase() !== address?.road?.toLocaleLowerCase()
+    ? address.name
+    : street || address?.name
   const label = uniqueParts([
     primary,
     street !== primary ? street : undefined,
-    properties.district,
-    properties.city || properties.county,
-    properties.state,
+    address?.neighbourhood || address?.suburb || address?.city_district,
+    address?.city || address?.town || address?.village || address?.county,
+    address?.state,
   ]).join(', ')
 
-  if (label.length < 3) return null
-  return { label, lat, lng }
+  if (label.length >= 3) return { label, lat, lng }
+  if (feature.display_name) {
+    const fallback = feature.display_name.split(',').slice(0, 4).join(',').replace(/,\s*/g, ', ').trim()
+    if (fallback.length >= 3) return { label: fallback, lat, lng }
+  }
+  return null
 }
 
 export function AddressAutocomplete({ id, value, invalid, onChange, onSelect }: Props) {
@@ -102,18 +109,40 @@ export function AddressAutocomplete({ id, value, invalid, onChange, onSelect }: 
 
     const timeout = window.setTimeout(async () => {
       try {
-        const url = new URL('https://photon.komoot.io/api/')
+        const token = process.env.NEXT_PUBLIC_LOCATIONIQ_TOKEN
+        if (!token) throw new Error('NEXT_PUBLIC_LOCATIONIQ_TOKEN is not set')
+
+        // Soft-bias results toward Makurdi (WEN_HQ) without excluding the
+        // rest of the country — bounded=0 keeps the viewbox as a preference,
+        // not a hard filter.
+        const box = 0.6 // degrees ~ generous radius around HQ
+        const url = new URL('https://us1.locationiq.com/v1/autocomplete')
+        url.searchParams.set('key', token)
         url.searchParams.set('q', query)
-        url.searchParams.set('lat', String(WEN_HQ.lat))
-        url.searchParams.set('lon', String(WEN_HQ.lng))
+        url.searchParams.set('countrycodes', 'ng')
         url.searchParams.set('limit', '8')
-        url.searchParams.set('lang', 'en')
+        url.searchParams.set('format', 'json')
+        url.searchParams.set('normalizecity', '1')
+        url.searchParams.set('dedupe', '1')
+        url.searchParams.set('viewbox', [
+          WEN_HQ.lng - box, WEN_HQ.lat + box,
+          WEN_HQ.lng + box, WEN_HQ.lat - box,
+        ].join(','))
+        url.searchParams.set('bounded', '0')
 
         const response = await fetch(url, { signal: controller.signal })
-        if (!response.ok) throw new Error(`Address search failed (${response.status})`)
+        if (!response.ok) {
+          // LocationIQ returns 404 with a JSON body for "no results" — not a real error
+          if (response.status === 404) {
+            setSuggestions([])
+            setSearchState('ready')
+            return
+          }
+          throw new Error(`Address search failed (${response.status})`)
+        }
 
-        const data = await response.json() as { features?: PhotonFeature[] }
-        const matches = (data.features ?? [])
+        const data = await response.json() as LocationIQFeature[]
+        const matches = (Array.isArray(data) ? data : [])
           .map(toSuggestion)
           .filter((item): item is AddressSuggestion => item !== null)
 
@@ -243,7 +272,7 @@ export function AddressAutocomplete({ id, value, invalid, onChange, onSelect }: 
       )}
 
       <p className="mt-1.5 text-[11px] leading-relaxed text-stone/45">
-        Search suggestions use <a href="https://photon.komoot.io/" target="_blank" rel="noreferrer" className="underline underline-offset-2">Photon</a> with <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" className="underline underline-offset-2">OpenStreetMap</a> data. Typed searches go to Photon; use the optional pin instead if preferred.
+        Search suggestions by <a href="https://locationiq.com/" target="_blank" rel="noreferrer" className="underline underline-offset-2">LocationIQ</a>. Use the optional pin instead if your address doesn&apos;t show up.
       </p>
     </div>
   )
