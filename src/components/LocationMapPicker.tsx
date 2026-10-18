@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { Loader2, MapPin, Navigation, X, LocateFixed } from 'lucide-react'
+import 'leaflet/dist/leaflet.css'
 
 interface Props {
   onConfirm: (coords: { lat: number; lng: number }, label: string) => void
@@ -190,21 +191,29 @@ export default function LocationMapPicker({ onConfirm, onClose, initialLocation 
   useEffect(() => {
     if (!mapRef.current || mapObj.current) return
 
-    if (!document.getElementById('leaflet-css')) {
-      const link = document.createElement('link')
-      link.id   = 'leaflet-css'
-      link.rel  = 'stylesheet'
-      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
-      document.head.appendChild(link)
-    }
+    // A stuck "Getting a precise GPS fix" screen with no map underneath
+    // reads as broken, not loading — if Leaflet itself (bundled locally,
+    // not a CDN) hasn't finished initializing within a few seconds,
+    // surface that instead of spinning forever.
+    const stallTimeout = window.setTimeout(() => {
+      if (!mapObj.current) {
+        setGpsError('Map is taking longer than expected to load — check your connection.')
+        setLoading(false)
+      }
+    }, 8000)
 
     import('leaflet').then(L => {
+      window.clearTimeout(stallTimeout)
+
+      // Marker icons are served from our own /public/leaflet (copied from
+      // the leaflet package at build time) instead of a CDN — a blocked
+      // or slow unpkg.com would otherwise leave every pin invisible.
       const DefaultIcon = L.Icon.Default as any
       delete DefaultIcon.prototype._getIconUrl
       L.Icon.Default.mergeOptions({
-        iconUrl:       'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-        iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-        shadowUrl:     'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+        iconUrl:       '/leaflet/marker-icon.png',
+        iconRetinaUrl: '/leaflet/marker-icon-2x.png',
+        shadowUrl:     '/leaflet/marker-shadow.png',
       })
 
       const map = L.map(mapRef.current!, {
@@ -213,7 +222,10 @@ export default function LocationMapPicker({ onConfirm, onClose, initialLocation 
         zoomControl: true,
       })
 
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      // No {s} subdomain fan-out — OSM's tile usage policy asks clients not
+      // to load-balance across subdomains, and a single stable host is
+      // actually more reliable (no extra DNS lookups to warm up).
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap',
         maxZoom: 19,
       }).addTo(map)
@@ -224,6 +236,12 @@ export default function LocationMapPicker({ onConfirm, onClose, initialLocation 
 
       LRef.current   = L
       mapObj.current = map
+
+      // The overlay can mount a tick before layout settles (lazy-loaded
+      // behind Suspense) — invalidateSize() guards against Leaflet having
+      // measured a zero-height container and rendering blank/grey tiles.
+      requestAnimationFrame(() => mapObj.current?.invalidateSize())
+
       if (initialLocation) {
         setPinSource('address')
         setLoading(false)
@@ -232,11 +250,13 @@ export default function LocationMapPicker({ onConfirm, onClose, initialLocation 
         startWatching()
       }
     }).catch(() => {
+      window.clearTimeout(stallTimeout)
       setGpsError('Map failed to load — check your connection and try again')
       setLoading(false)
     })
 
     return () => {
+      window.clearTimeout(stallTimeout)
       if (watchId.current !== null) {
         navigator.geolocation.clearWatch(watchId.current)
         watchId.current = null
