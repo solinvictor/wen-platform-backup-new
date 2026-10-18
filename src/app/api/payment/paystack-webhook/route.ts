@@ -191,6 +191,11 @@ export async function POST(req: NextRequest) {
     if (referralError) {
       console.error('[paystack-webhook] credit_referral_reward failed:', referralError.message)
     }
+
+    const { error: cashbackError } = await supabase.rpc('credit_order_cashback', { p_order_id: order.id })
+    if (cashbackError) {
+      console.error('[paystack-webhook] credit_order_cashback failed:', cashbackError.message)
+    }
   }
 
   return NextResponse.json({ received: true })
