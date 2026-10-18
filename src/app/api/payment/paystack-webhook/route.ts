@@ -186,6 +186,11 @@ export async function POST(req: NextRequest) {
 
   if (updateError) {
     console.error('[paystack-webhook] failed to mark order paid:', updateError.message)
+  } else {
+    const { error: referralError } = await supabase.rpc('credit_referral_reward', { p_order_id: order.id })
+    if (referralError) {
+      console.error('[paystack-webhook] credit_referral_reward failed:', referralError.message)
+    }
   }
 
   return NextResponse.json({ received: true })

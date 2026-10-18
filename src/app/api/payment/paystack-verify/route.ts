@@ -124,6 +124,11 @@ export async function POST(req: NextRequest) {
         .from('orders')
         .update({ status: 'paid', monnify_transaction_reference: reference.trim() })
         .eq('id', order.id)
+
+      const { error: referralError } = await supabase.rpc('credit_referral_reward', { p_order_id: order.id })
+      if (referralError) {
+        console.error('[paystack-verify] credit_referral_reward failed:', referralError.message)
+      }
     }
 
     return NextResponse.json({ paid: true, order: { ...order, status: 'paid' } })

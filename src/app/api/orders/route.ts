@@ -193,13 +193,15 @@ export async function POST(req: NextRequest) {
           .single()
 
         if (referrer && referrer.id !== buyer.id) {
+          // 'pending' until the order is actually paid — credit_referral_reward()
+          // (called from the Paystack webhook/verify) flips this to 'converted'
+          // and pays the referrer then, so an abandoned cart never earns a reward.
           await supabase.from('referrals').insert({
-            referrer_id:  referrer.id,
-            referred_id:  buyer.id,
-            order_id:     order.id,
-            code_used:    refCode,
-            status:       'converted',
-            converted_at: new Date().toISOString(),
+            referrer_id: referrer.id,
+            referred_id: buyer.id,
+            order_id:    order.id,
+            code_used:   refCode,
+            status:      'pending',
           })
         }
       } catch (refErr) {
