@@ -77,6 +77,28 @@ export default function CheckoutPage() {
     ? (cartTotal ?? 0) - marketDayDiscount + deliveryFee
     : null
 
+  // Order fields appear on the page top-to-bottom — used to scroll/focus
+  // the first invalid one when validation fails.
+  const FIELD_ORDER: Array<{ key: keyof FormData; id: string }> = [
+    { key: 'fullName', id: 'checkout-name' },
+    { key: 'phone',    id: 'checkout-phone' },
+    { key: 'email',    id: 'checkout-email' },
+    { key: 'address',  id: 'checkout-address' },
+  ]
+
+  function focusFirstError(e: Partial<FormData>) {
+    const first = FIELD_ORDER.find(f => e[f.key])
+    if (!first) return
+    const el = document.getElementById(first.id)
+    if (!el) return
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    // Wait for the smooth-scroll to settle a beat before focusing, so
+    // mobile keyboards don't pop up mid-scroll and fight it.
+    window.setTimeout(() => {
+      if (el instanceof HTMLElement) el.focus({ preventScroll: true })
+    }, 300)
+  }
+
   function validate(): boolean {
     const e: Partial<FormData> = {}
     if (!form.fullName.trim() || form.fullName.trim().length < 2) e.fullName = 'Enter your full name'
@@ -91,6 +113,7 @@ export default function CheckoutPage() {
       e.address = 'Delivery fee is still calculating — please wait a moment'
     }
     setErrors(e)
+    if (Object.keys(e).length > 0) focusFirstError(e)
     return Object.keys(e).length === 0
   }
 
