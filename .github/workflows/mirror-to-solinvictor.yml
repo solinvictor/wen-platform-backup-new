@@ -1,0 +1,26 @@
+name: Mirror to solinvictor/wen-platform-backup-new
+
+# Keeps solinvictor/wen-platform-backup-new (the repo Vercel deploys from)
+# in sync with this repo automatically. No manual re-sync needed after
+# every push to main.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Push to solinvictor/wen-platform-backup-new
+        env:
+          MIRROR_TOKEN: ${{ secrets.MIRROR_TOKEN }}
+        run: |
+          git remote add mirror "https://${MIRROR_TOKEN}@github.com/solinvictor/wen-platform-backup-new.git"
+          git push mirror HEAD:main --force
