@@ -2,6 +2,59 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 /**
+ * Defensive fallback for wallet top-ups (the webhook is the primary path,
+ * same as for orders). Independently re-checks the transaction with
+ * Paystack before crediting — never trusts the redirect or the client.
+ * wallet_credit() is idempotent on reference, so this is safe to call
+ * even if the webhook already landed.
+ */
+async function verifyWalletFunding(
+  supabase: ReturnType<typeof createAdminClient>,
+  secretKey: string,
+  reference: string,
+) {
+  const { data: existing } = await supabase
+    .from('wallet_transactions')
+    .select('id, balance_after')
+    .eq('reference', reference)
+    .maybeSingle()
+
+  if (existing) {
+    return NextResponse.json({ paid: true, walletFunded: true })
+  }
+
+  const psRes = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`, {
+    headers: { Authorization: `Bearer ${secretKey}` },
+  })
+  const psData = await psRes.json()
+
+  if (!psRes.ok || !psData?.status || psData.data?.status !== 'success') {
+    return NextResponse.json({ paid: false, error: psData?.message || 'Payment was not successful.' })
+  }
+
+  const buyerId = psData.data?.metadata?.buyer_id
+  const amountKobo = psData.data?.amount
+  if (!buyerId || !amountKobo) {
+    console.error('[paystack-verify] wallet_funding verify missing buyer_id or amount for', reference)
+    return NextResponse.json({ paid: false, error: 'Could not confirm this top-up.' })
+  }
+
+  const { error: creditError } = await supabase.rpc('wallet_credit', {
+    p_buyer_id: buyerId,
+    p_amount: amountKobo / 100,
+    p_reason: 'Paystack wallet top-up',
+    p_reference: reference,
+  })
+
+  if (creditError) {
+    console.error('[paystack-verify] wallet_credit failed:', creditError.message)
+    return NextResponse.json({ paid: false, error: 'Could not credit your wallet. Please try again.' })
+  }
+
+  return NextResponse.json({ paid: true, walletFunded: true })
+}
+
+/**
  * Called by the checkout callback page after Paystack redirects the buyer
  * back. This does NOT trust the redirect happened — it independently asks
  * Paystack whether the transaction actually succeeded, and only then
@@ -24,6 +77,12 @@ export async function POST(req: NextRequest) {
     }
 
     const supabase = createAdminClient()
+
+    // Wallet top-ups don't create an `orders` row — route by reference
+    // prefix before falling into the order-lookup path below.
+    if (reference.trim().startsWith('WEN-WALLET-')) {
+      return verifyWalletFunding(supabase, secretKey, reference.trim())
+    }
 
     const { data: order, error: orderError } = await supabase
       .from('orders')

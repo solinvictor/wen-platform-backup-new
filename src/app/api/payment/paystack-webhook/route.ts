@@ -13,7 +13,7 @@ interface PaystackChargeEvent {
     reference?: string
     status?: string
     amount?: number
-    metadata?: { kind?: string; order_ref?: string; order_id?: string; subscription_id?: string }
+    metadata?: { kind?: string; order_ref?: string; order_id?: string; subscription_id?: string; buyer_id?: string; amount?: number }
     authorization?: PaystackAuthorization
   }
 }
@@ -120,6 +120,29 @@ export async function POST(req: NextRequest) {
         next_delivery_date: nextDelivery.toISOString().slice(0, 10),
       })
       .eq('id', subscriptionId)
+
+    return NextResponse.json({ received: true })
+  }
+
+  // ── Wallet top-up ───────────────────────────────────────────────────
+  if (kind === 'wallet_funding') {
+    const buyerId = event.data?.metadata?.buyer_id
+    const amountKobo = event.data?.amount
+    if (!buyerId || !amountKobo) {
+      console.error('[paystack-webhook] wallet_funding event missing buyer_id or amount')
+      return NextResponse.json({ received: true })
+    }
+
+    const { error: creditError } = await supabase.rpc('wallet_credit', {
+      p_buyer_id: buyerId,
+      p_amount: amountKobo / 100,
+      p_reason: 'Paystack wallet top-up',
+      p_reference: reference,
+    })
+
+    if (creditError) {
+      console.error('[paystack-webhook] wallet_credit failed:', creditError.message)
+    }
 
     return NextResponse.json({ received: true })
   }

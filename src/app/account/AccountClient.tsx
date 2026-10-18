@@ -1,12 +1,13 @@
 'use client'
 
 import { useState, useEffect, Suspense } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import {
   ChevronLeft, Package, User, LogOut, Loader2,
   CheckCircle2, Clock, Truck, XCircle, RefreshCw,
   ChevronRight, Phone, Mail, MapPin, Copy, Check,
+  Wallet, ArrowDownLeft, ArrowUpRight,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { BottomTabBar } from '@/components/BottomTabBar'
@@ -32,6 +33,20 @@ interface Props {
   initialEmail: string
   initialPhone: string
   referralCode?: string | null
+  buyerId?: string | null
+}
+
+interface WalletTransaction {
+  id: string
+  type: 'credit' | 'debit'
+  amount: number
+  reason: string
+  balance_after: number
+  created_at: string
+}
+
+function fmtNaira(n: number) {
+  return '₦' + n.toLocaleString('en-NG', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
 }
 
 // ── Status badge ─────────────────────────────────────────────────────────────
@@ -139,8 +154,9 @@ function OrderCard({ order }: { order: Order }) {
 }
 
 // ── Main client component ─────────────────────────────────────────────────────
-export default function AccountClient({ userId, initialName, initialEmail, initialPhone, referralCode }: Props) {
+function AccountClientInner({ userId, initialName, initialEmail, initialPhone, referralCode, buyerId }: Props) {
   const router = useRouter()
+  const searchParams = useSearchParams()
 
   // Orders
   const [orders, setOrders]         = useState<Order[]>([])
@@ -154,9 +170,64 @@ export default function AccountClient({ userId, initialName, initialEmail, initi
   const [saveMsg, setSaveMsg]       = useState('')
 
   // Active tab
-  const [tab, setTab]               = useState<'orders' | 'profile'>('profile')
+  const initialTab = searchParams.get('tab') === 'wallet' ? 'wallet' : 'profile'
+  const [tab, setTab]               = useState<'orders' | 'profile' | 'wallet'>(initialTab)
   const [ordersVisible, setOrdersVisible] = useState(false)
   const [copied, setCopied]         = useState(false)
+
+  // Wallet
+  const [balance, setBalance]             = useState<number | null>(null)
+  const [walletLoading, setWalletLoading] = useState(true)
+  const [transactions, setTransactions]   = useState<WalletTransaction[]>([])
+  const [fundAmount, setFundAmount]       = useState('')
+  const [funding, setFunding]             = useState(false)
+  const [fundError, setFundError]         = useState('')
+
+  // ── Fetch wallet ─────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!buyerId) { setWalletLoading(false); return }
+    const supabase = createClient()
+    Promise.all([
+      supabase.from('wallets').select('balance').eq('buyer_id', buyerId).single(),
+      supabase.from('wallet_transactions')
+        .select('id, type, amount, reason, balance_after, created_at')
+        .eq('buyer_id', buyerId)
+        .order('created_at', { ascending: false })
+        .limit(20),
+    ]).then(([walletRes, txRes]) => {
+      setBalance(walletRes.data ? Number(walletRes.data.balance) : 0)
+      setTransactions((txRes.data ?? []) as WalletTransaction[])
+      setWalletLoading(false)
+    })
+  }, [buyerId])
+
+  async function handleFundWallet(e: React.FormEvent) {
+    e.preventDefault()
+    setFundError('')
+    const amountNum = Number(fundAmount)
+    if (!Number.isFinite(amountNum) || amountNum < 100) {
+      setFundError('Enter an amount of at least ₦100.')
+      return
+    }
+    setFunding(true)
+    try {
+      const res = await fetch('/api/payment/paystack-initialize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fundWallet: true, amount: amountNum }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.authorizationUrl) {
+        setFundError(data.error || 'Could not start payment. Please try again.')
+        return
+      }
+      window.location.href = data.authorizationUrl
+    } catch {
+      setFundError('Could not reach the server. Check your connection and try again.')
+    } finally {
+      setFunding(false)
+    }
+  }
 
   // ── Fetch orders ────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -276,7 +347,7 @@ export default function AccountClient({ userId, initialName, initialEmail, initi
 
         {/* Tabs */}
         <div className="flex gap-1 bg-white border border-soil/10 rounded-2xl p-1 mb-5">
-          {(['orders', 'profile'] as const).map(t => (
+          {(['wallet', 'orders', 'profile'] as const).map(t => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -286,11 +357,90 @@ export default function AccountClient({ userId, initialName, initialEmail, initi
                   : 'text-soil/50 hover:text-soil'
               }`}
             >
-              {t === 'orders' ? <Package size={14} /> : <User size={14} />}
-              {t === 'orders' ? 'Order history' : 'Edit profile'}
+              {t === 'wallet' ? <Wallet size={14} /> : t === 'orders' ? <Package size={14} /> : <User size={14} />}
+              {t === 'wallet' ? 'Wallet' : t === 'orders' ? 'Order history' : 'Edit profile'}
             </button>
           ))}
         </div>
+
+        {/* Wallet tab */}
+        {tab === 'wallet' && (
+          <div className="space-y-3">
+            <div className="bg-soil rounded-2xl px-5 py-5 text-white">
+              <p className="text-[12px] font-semibold text-white/60 uppercase tracking-wider mb-1">Wallet balance</p>
+              {walletLoading ? (
+                <Loader2 size={20} className="animate-spin text-white/60 mt-1" />
+              ) : (
+                <p className="font-data text-[28px] font-bold">{fmtNaira(balance ?? 0)}</p>
+              )}
+              <p className="text-[11.5px] text-white/50 mt-1.5">In-house credit — not withdrawable, used for your WEN orders and rewards.</p>
+            </div>
+
+            <div className="bg-white border border-soil/10 rounded-2xl px-5 py-5">
+              <h2 className="font-body text-soil font-bold text-[15px] mb-3">Fund your wallet</h2>
+              <form onSubmit={handleFundWallet} className="space-y-3">
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-stone/50 text-[14.5px]">₦</span>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min={100}
+                    step={1}
+                    value={fundAmount}
+                    onChange={e => setFundAmount(e.target.value)}
+                    placeholder="2,000"
+                    className="w-full bg-[#eef1f4] border border-soil/12 rounded-xl pl-8 pr-4 py-3 text-[14.5px] text-soil outline-none focus:border-pepper focus:bg-white transition-all placeholder:text-stone/35"
+                  />
+                </div>
+                {fundError && <p className="text-[12.5px] text-red-500">{fundError}</p>}
+                <button
+                  type="submit"
+                  disabled={funding}
+                  className="w-full bg-pepper text-white text-[14.5px] font-semibold py-3.5 rounded-2xl hover:bg-pepper-deep active:scale-[0.98] transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+                >
+                  {funding && <Loader2 size={15} className="animate-spin" />}
+                  {funding ? 'Starting payment…' : 'Fund with Paystack'}
+                </button>
+              </form>
+            </div>
+
+            <div className="bg-white border border-soil/10 rounded-2xl overflow-hidden">
+              <div className="px-5 py-4 border-b border-soil/8">
+                <h2 className="font-body text-soil font-bold text-[15px]">Recent activity</h2>
+              </div>
+              {walletLoading ? (
+                <div className="flex items-center justify-center py-10">
+                  <Loader2 size={20} className="animate-spin text-stone/40" />
+                </div>
+              ) : transactions.length === 0 ? (
+                <p className="px-5 py-8 text-center text-[13px] text-stone/50">No wallet activity yet.</p>
+              ) : (
+                <div className="divide-y divide-soil/8">
+                  {transactions.map(txn => (
+                    <div key={txn.id} className="flex items-center gap-3 px-5 py-3.5">
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                        txn.type === 'credit' ? 'bg-pepper/10' : 'bg-red-50'
+                      }`}>
+                        {txn.type === 'credit'
+                          ? <ArrowDownLeft size={15} className="text-pepper-deep" />
+                          : <ArrowUpRight size={15} className="text-red-500" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-soil text-[13.5px] font-medium truncate">{txn.reason}</p>
+                        <p className="text-stone/45 text-[11.5px] mt-0.5">
+                          {new Date(txn.created_at).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </p>
+                      </div>
+                      <p className={`font-data text-[13.5px] font-bold shrink-0 ${txn.type === 'credit' ? 'text-pepper-deep' : 'text-red-500'}`}>
+                        {txn.type === 'credit' ? '+' : '−'}{fmtNaira(txn.amount)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Orders tab */}
         {tab === 'orders' && (
@@ -415,5 +565,15 @@ export default function AccountClient({ userId, initialName, initialEmail, initi
         <BottomTabBar />
       </Suspense>
     </div>
+  )
+}
+
+// useSearchParams (for the ?tab=wallet deep link from the wallet callback
+// page) requires a Suspense boundary around whatever calls it.
+export default function AccountClient(props: Props) {
+  return (
+    <Suspense fallback={null}>
+      <AccountClientInner {...props} />
+    </Suspense>
   )
 }

@@ -1,15 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { createClient } from '@/lib/supabase/server'
+
+/** Wallet funding amount bounds, in naira */
+const MIN_WALLET_FUNDING = 100
+const MAX_WALLET_FUNDING = 500_000
 
 /**
- * Starts a Paystack checkout for either:
+ * Starts a Paystack checkout for one of:
  *  - a one-time order (orderRef) — the original flow
  *  - a subscription's first, tokenizing payment (subscriptionId) — the
  *    reusable authorization captured from THIS charge is what the daily
  *    cron uses to charge future deliveries automatically
+ *  - a wallet top-up (fundWallet + amount) — the only case where the
+ *    client supplies an amount; it's clamped and the buyer is read from
+ *    the authenticated session, never trusted from the body otherwise
  *
  * Never trusts anything the client sends beyond which record to charge for
- * — amount and email are always re-read from the database.
+ * — amount and email are always re-read from the database (or, for wallet
+ * funding, from the authenticated session + a clamped client-supplied
+ * amount).
  *
  * Reuses the monnify_email / monnify_card_token / setup_payment_reference
  * columns added during the brief Monnify era rather than renaming anything
@@ -17,14 +27,19 @@ import { createAdminClient } from '@/lib/supabase/admin'
  * setup_payment_reference isn't load-bearing here the way it was for
  * Monnify, but it's kept in sync anyway in case anything else still reads it.
  *
- * Body: { orderRef: string } OR { subscriptionId: string }
+ * Body: { orderRef: string } OR { subscriptionId: string } OR { fundWallet: true, amount: number }
  */
 export async function POST(req: NextRequest) {
   try {
-    const body = (await req.json()) as { orderRef?: string; subscriptionId?: string }
-    const { orderRef, subscriptionId } = body
+    const body = (await req.json()) as {
+      orderRef?: string
+      subscriptionId?: string
+      fundWallet?: boolean
+      amount?: number
+    }
+    const { orderRef, subscriptionId, fundWallet, amount } = body
 
-    if (!orderRef?.trim() && !subscriptionId?.trim()) {
+    if (!orderRef?.trim() && !subscriptionId?.trim() && !fundWallet) {
       return NextResponse.json({ error: 'Missing order or subscription reference.' }, { status: 400 })
     }
 
@@ -70,6 +85,41 @@ export async function POST(req: NextRequest) {
       reference = orderRef.trim()
       callbackPath = '/checkout/callback'
       metadata = { kind: 'order', order_ref: orderRef.trim(), order_id: order.id }
+    } else if (fundWallet) {
+      const sessionClient = await createClient()
+      const { data: { user } } = await sessionClient.auth.getUser()
+      if (!user) {
+        return NextResponse.json({ error: 'Please log in to fund your wallet.' }, { status: 401 })
+      }
+
+      const amountNum = Number(amount)
+      if (!Number.isFinite(amountNum) || amountNum < MIN_WALLET_FUNDING || amountNum > MAX_WALLET_FUNDING) {
+        return NextResponse.json({
+          error: `Enter an amount between ₦${MIN_WALLET_FUNDING.toLocaleString('en-NG')} and ₦${MAX_WALLET_FUNDING.toLocaleString('en-NG')}.`,
+        }, { status: 400 })
+      }
+
+      const { data: buyer, error: buyerError } = await supabase
+        .from('buyers')
+        .select('id')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single()
+
+      if (buyerError || !buyer) {
+        return NextResponse.json({ error: 'Could not find your buyer account.' }, { status: 404 })
+      }
+
+      email = user.email ?? ''
+      if (!email) {
+        return NextResponse.json({ error: 'Your account has no email on file.' }, { status: 400 })
+      }
+
+      amountKobo = Math.round(amountNum * 100)
+      reference = `WEN-WALLET-${buyer.id}-${Date.now().toString(36).toUpperCase()}`
+      callbackPath = '/account/wallet-callback'
+      metadata = { kind: 'wallet_funding', buyer_id: buyer.id, amount: amountNum }
     } else {
       const { data: sub, error: subError } = await supabase
         .from('subscriptions')
