@@ -3,7 +3,9 @@
 export type FieldError = Record<string, string>
 
 // Nigerian phone: 080XXXXXXXX, 070XXXXXXXX, +2348XXXXXXXXX etc.
-const NG_PHONE_RE = /^(\+?234|0)[789]\d{9}$/
+// Network code digit is 7/8/9, followed by 0/1 — matches every real NG
+// mobile prefix (080,081,070,071,090,091, etc); anything else is typoed.
+const NG_PHONE_RE = /^(?:\+?234|0)[789][01]\d{8}$/
 
 export function validatePhone(value: string): string | null {
   const cleaned = value.replace(/[\s\-()]/g, '')

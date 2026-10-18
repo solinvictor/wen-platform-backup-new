@@ -13,6 +13,7 @@ import { MarketDayBanner } from '@/components/MarketDayBanner'
 import { calculateMarketDayDiscount, getMarketDayInfo, type MarketDayInfo } from '@/lib/market-day'
 import { haversineKm, calcDeliveryFee, WEN_HQ, type DeliveryCalc } from '@/lib/delivery'
 import { AddressAutocomplete, type AddressSuggestion } from '@/components/AddressAutocomplete'
+import { validatePhone } from '@/lib/validate'
 
 const LocationMapPicker = lazy(() => import('@/components/LocationMapPicker'))
 
@@ -102,7 +103,8 @@ export default function CheckoutPage() {
   function validate(): boolean {
     const e: Partial<FormData> = {}
     if (!form.fullName.trim() || form.fullName.trim().length < 2) e.fullName = 'Enter your full name'
-    if (!/^0[789][01]\d{8}$/.test(form.phone.trim())) e.phone = 'Enter a valid Nigerian phone number'
+    const phoneErr = validatePhone(form.phone)
+    if (phoneErr) e.phone = phoneErr
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) e.email = 'Enter a valid email — we\'ll send your receipt here'
     if (!form.address.trim() || form.address.trim().length < 5) {
       e.address = 'Enter the recipient’s delivery address or area'
