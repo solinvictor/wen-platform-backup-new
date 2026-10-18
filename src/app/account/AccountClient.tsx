@@ -345,20 +345,22 @@ function AccountClientInner({ userId, initialName, initialEmail, initialPhone, r
           </div>
         )}
 
-        {/* Tabs */}
+        {/* Tabs — short, non-wrapping labels so 3 tabs stay comfortable at
+            narrow phone widths; the fuller wording ("Order history",
+            "Edit profile") still appears as each panel's own heading. */}
         <div className="flex gap-1 bg-white border border-soil/10 rounded-2xl p-1 mb-5">
           {(['wallet', 'orders', 'profile'] as const).map(t => (
             <button
               key={t}
               onClick={() => setTab(t)}
-              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[13.5px] font-semibold transition-all ${
+              className={`flex-1 flex items-center justify-center gap-1 sm:gap-1.5 py-2.5 px-1 rounded-xl text-[12.5px] sm:text-[13.5px] font-semibold whitespace-nowrap transition-all ${
                 tab === t
                   ? 'bg-soil text-white shadow-sm'
                   : 'text-soil/50 hover:text-soil'
               }`}
             >
-              {t === 'wallet' ? <Wallet size={14} /> : t === 'orders' ? <Package size={14} /> : <User size={14} />}
-              {t === 'wallet' ? 'Wallet' : t === 'orders' ? 'Order history' : 'Edit profile'}
+              {t === 'wallet' ? <Wallet size={14} className="shrink-0" /> : t === 'orders' ? <Package size={14} className="shrink-0" /> : <User size={14} className="shrink-0" />}
+              {t === 'wallet' ? 'Wallet' : t === 'orders' ? 'Orders' : 'Profile'}
             </button>
           ))}
         </div>
