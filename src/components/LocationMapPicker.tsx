@@ -38,27 +38,10 @@ export default function LocationMapPicker({ onConfirm, onClose, initialLocation 
 
   async function reverseGeocode(lat: number, lng: number): Promise<string> {
     try {
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1`,
-        {
-          headers: {
-            'Accept-Language': 'en',
-            'User-Agent': 'WENPlatform/1.0 (farm-to-market; contact@wen.local)',
-          },
-        }
-      )
-      if (!res.ok) throw new Error(`Nominatim ${res.status}`)
-      const data = await res.json()
-      const addr = data.address || {}
-      const parts = [
-        addr.road || addr.suburb || addr.neighbourhood || addr.city_district || addr.town || addr.village,
-        addr.city || addr.county || addr.state_district,
-        addr.state,
-      ].filter(Boolean)
-      if (parts.length) return parts.slice(0, 3).join(', ')
-      if (data?.display_name) {
-        return data.display_name.split(',').slice(0, 4).join(', ').trim()
-      }
+      const res = await fetch(`/api/geocode/reverse?lat=${lat}&lng=${lng}`)
+      if (!res.ok) throw new Error(`geocode/reverse ${res.status}`)
+      const data = await res.json() as { label?: string | null }
+      if (data.label) return data.label
     } catch { /* fall through */ }
     return `${lat.toFixed(6)}, ${lng.toFixed(6)}`
   }
