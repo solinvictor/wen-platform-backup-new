@@ -17,10 +17,16 @@ const FALLBACK_PRICE: Record<string, number> = {
   eggs: 5700,
 }
 
+// Fallback unit shown only until the real DB row loads (WeeklyAvailability
+// below overrides this with the actual product's unit once fetched).
+const FALLBACK_UNIT: Record<string, string> = {
+  chicken: 'kg', eggs: 'crate', fish: 'kg', rice: 'bag', beans: 'bag',
+}
+
 const CATEGORIES = ACTIVE_CATEGORY_META.map((c) => ({
   label: c.label,
   slug: c.slug,
-  unit: c.slug === 'chicken' ? 'kg' : 'crate',
+  unit: FALLBACK_UNIT[c.slug] ?? 'unit',
   img: CATEGORY_IMAGES[c.slug],
   body: c.blurb,
 }))
