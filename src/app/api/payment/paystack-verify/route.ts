@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { sendEmail } from '@/lib/email'
+import { orderReceiptEmail } from '@/lib/email-templates'
 
 /**
  * Defensive fallback for wallet top-ups (the webhook is the primary path,
@@ -86,7 +88,11 @@ export async function POST(req: NextRequest) {
 
     const { data: order, error: orderError } = await supabase
       .from('orders')
-      .select('id, status, amount_total, order_ref, product_summary, delivery_type, delivery_fee')
+      .select(`
+        id, status, amount_total, order_ref, product_summary, delivery_type, delivery_fee,
+        delivery_credit_applied, wallet_amount_applied, expected_delivery_date,
+        buyers ( email )
+      `)
       .eq('order_ref', reference.trim())
       .single()
 
@@ -143,6 +149,25 @@ export async function POST(req: NextRequest) {
       const { error: walletRedeemError } = await supabase.rpc('redeem_wallet_applied', { p_order_id: order.id })
       if (walletRedeemError) {
         console.error('[paystack-verify] redeem_wallet_applied failed:', walletRedeemError.message)
+      }
+
+      const orderBuyers = (order as { buyers?: { email?: string } | { email?: string }[] }).buyers
+      const buyerEmail = Array.isArray(orderBuyers) ? orderBuyers[0]?.email : orderBuyers?.email
+      if (buyerEmail) {
+        const { subject, html } = orderReceiptEmail({
+          orderRef:              order.order_ref,
+          productSummary:        order.product_summary,
+          amountTotal:           Number(order.amount_total),
+          deliveryFee:           order.delivery_fee != null ? Number(order.delivery_fee) : null,
+          deliveryCreditApplied: Number(order.delivery_credit_applied ?? 0),
+          walletAmountApplied:   Number(order.wallet_amount_applied ?? 0),
+          expectedDeliveryDate:  order.expected_delivery_date,
+        })
+        try {
+          await sendEmail({ to: buyerEmail, subject, html })
+        } catch (err) {
+          console.error('[paystack-verify] receipt email failed:', err)
+        }
       }
     }
 

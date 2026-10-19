@@ -49,3 +49,62 @@ export function welcomeEmail({ name, referralCode }: { name: string; referralCod
     html,
   }
 }
+
+function naira(n: number) {
+  return '₦' + n.toLocaleString('en-NG', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
+}
+
+export function orderReceiptEmail({
+  orderRef, productSummary, amountTotal, deliveryFee,
+  deliveryCreditApplied, walletAmountApplied, expectedDeliveryDate,
+}: {
+  orderRef: string
+  productSummary: string
+  amountTotal: number
+  deliveryFee: number | null
+  deliveryCreditApplied?: number
+  walletAmountApplied?: number
+  expectedDeliveryDate?: string | null
+}) {
+  const rows: Array<[string, string]> = []
+  if (deliveryFee != null) rows.push(['Delivery fee', naira(deliveryFee)])
+  if (deliveryCreditApplied) rows.push(['Delivery credit applied', `− ${naira(deliveryCreditApplied)}`])
+  if (walletAmountApplied) rows.push(['Wallet applied', `− ${naira(walletAmountApplied)}`])
+
+  const html = wrapper(`
+    <h1 style="color:${SOIL};font-size:22px;margin:0 0 4px;">Payment received ✅</h1>
+    <p style="color:#8a8278;font-size:13px;margin:0 0 20px;">Order <strong style="color:${SOIL};">${orderRef}</strong></p>
+
+    <div style="background:#f7f2ea;border-radius:12px;padding:18px 20px;margin:0 0 18px;">
+      <p style="color:#8a8278;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;margin:0 0 8px;">Items</p>
+      <p style="color:${SOIL};font-size:14px;line-height:1.5;margin:0;">${productSummary}</p>
+    </div>
+
+    ${rows.length > 0 ? `
+      <table style="width:100%;border-collapse:collapse;margin:0 0 10px;">
+        ${rows.map(([label, value]) => `
+          <tr>
+            <td style="color:#8a8278;font-size:13px;padding:4px 0;">${label}</td>
+            <td style="color:${SOIL};font-size:13px;padding:4px 0;text-align:right;">${value}</td>
+          </tr>
+        `).join('')}
+      </table>
+    ` : ''}
+
+    <table style="width:100%;border-collapse:collapse;border-top:1px solid #e5ded2;margin:8px 0 18px;">
+      <tr>
+        <td style="color:${SOIL};font-size:16px;font-weight:700;padding:10px 0 0;">Amount paid</td>
+        <td style="color:${SOIL};font-size:16px;font-weight:700;padding:10px 0 0;text-align:right;">${naira(amountTotal)}</td>
+      </tr>
+    </table>
+
+    <p style="color:#5c554c;font-size:13.5px;line-height:1.6;margin:0 0 4px;">
+      We'll call within 2 hours to arrange delivery${expectedDeliveryDate ? ` — expected around <strong>${new Date(expectedDeliveryDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}</strong>` : ''}.
+    </p>
+  `)
+
+  return {
+    subject: `Receipt — order ${orderRef}`,
+    html,
+  }
+}

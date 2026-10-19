@@ -3,6 +3,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { getMarketDayInfo } from '@/lib/market-day'
 import { haversineKm, calcDeliveryFee, WEN_HQ } from '@/lib/delivery'
+import { sendEmail } from '@/lib/email'
+import { orderReceiptEmail } from '@/lib/email-templates'
 
 interface CartItem {
   id: string
@@ -253,6 +255,21 @@ export async function POST(req: NextRequest) {
       if (marketDay.marketDay) {
         const { error } = await supabase.rpc('credit_market_day_cashback', { p_order_id: order.id })
         if (error) console.error('[orders] credit_market_day_cashback (fully-paid) failed:', error.message)
+      }
+
+      // No Paystack redirect will happen for this order, so this is the
+      // only chance to send the receipt — paystack-verify/webhook never
+      // fire for an order with nothing left to charge.
+      const { subject, html } = orderReceiptEmail({
+        orderRef, productSummary, amountTotal,
+        deliveryFee: delivery.finalFee,
+        deliveryCreditApplied, walletAmountApplied,
+        expectedDeliveryDate: marketDay.deliveryDate,
+      })
+      try {
+        await sendEmail({ to: email.trim(), subject, html })
+      } catch (err) {
+        console.error('[orders] receipt email (fully-paid) failed:', err)
       }
     }
 
