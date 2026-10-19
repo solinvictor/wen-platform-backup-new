@@ -18,7 +18,7 @@ import { validatePhone } from '@/lib/validate'
 const LocationMapPicker = lazy(() => import('@/components/LocationMapPicker'))
 
 function fmt(n: number | null) {
-  if (!n) return '—'
+  if (n == null) return '—'
   return '₦' + n.toLocaleString('en-NG')
 }
 
@@ -56,6 +56,9 @@ export default function CheckoutPage() {
   const [marketDay, setMarketDay]   = useState<MarketDayInfo | null>(null)
   const [deliveryCalc, setDeliveryCalc] = useState<DeliveryCalc | null>(null)
   const [availableCredit, setAvailableCredit] = useState(0)
+  const [walletBalance, setWalletBalance]     = useState(0)
+  const [useWallet, setUseWallet]             = useState(false)
+  const [walletAmountInput, setWalletAmountInput] = useState('')
 
   useEffect(() => {
     if (cartCount === 0) router.replace('/store')
@@ -65,12 +68,16 @@ export default function CheckoutPage() {
     setMarketDay(getMarketDayInfo())
   }, [])
 
-  // Preview-only — the server independently recomputes and applies this at
-  // order creation (api/orders/route.ts). Silently 0 for guests / on error.
+  // Preview-only — the server independently recomputes and applies both of
+  // these at order creation (api/orders/route.ts). Silently 0 for guests /
+  // on error.
   useEffect(() => {
     fetch('/api/account/delivery-credits')
       .then(res => res.json())
-      .then(data => setAvailableCredit(Number(data?.available ?? 0)))
+      .then(data => {
+        setAvailableCredit(Number(data?.available ?? 0))
+        setWalletBalance(Number(data?.walletBalance ?? 0))
+      })
       .catch(() => {})
   }, [])
 
@@ -88,8 +95,23 @@ export default function CheckoutPage() {
   const deliveryCreditApplied = deliveryFee != null
     ? Math.round(Math.max(0, Math.min(availableCredit, deliveryFee * 0.25, deliveryFee)) * 100) / 100
     : 0
+  const remainingAfterCredit = hasPrices && deliveryFee != null
+    ? Math.max(0, (cartTotal ?? 0) + deliveryFee - deliveryCreditApplied)
+    : null
+  // What the wallet toggle can actually cover — capped by balance and by
+  // what's left after delivery credit. The server clamps independently;
+  // this is only for what the buyer sees before submitting.
+  const walletMaxApplicable = remainingAfterCredit != null
+    ? Math.min(walletBalance, remainingAfterCredit)
+    : 0
+  const walletRequested = useWallet
+    ? (walletAmountInput.trim() === '' ? walletMaxApplicable : Number(walletAmountInput))
+    : 0
+  const walletAmountApplied = remainingAfterCredit != null
+    ? Math.round(Math.max(0, Math.min(walletRequested, walletMaxApplicable)) * 100) / 100
+    : 0
   const grandTotal        = hasPrices && deliveryFee != null
-    ? (cartTotal ?? 0) + deliveryFee - deliveryCreditApplied
+    ? (cartTotal ?? 0) + deliveryFee - deliveryCreditApplied - walletAmountApplied
     : null
 
   // Order fields appear on the page top-to-bottom — used to scroll/focus
@@ -169,10 +191,21 @@ export default function CheckoutPage() {
             id: l.id, name: l.name, category: l.category, unit: l.unit,
             quantity: l.quantity,
           })),
+          walletAmountRequested: useWallet ? walletAmountApplied : 0,
         }),
       })
       const data = await res.json()
       if (!res.ok) { setError(data.error || 'Something went wrong. Try again.'); return }
+
+      // Wallet + delivery credit covered the whole order — nothing for
+      // Paystack to charge. The server already marked it paid and redeemed
+      // everything; go straight to the same confirmation screen a real
+      // Paystack redirect would land on (it already knows how to handle an
+      // order that's already 'paid').
+      if (data.fullyPaidByCredit) {
+        router.push(`/checkout/callback?reference=${encodeURIComponent(data.orderRef)}`)
+        return
+      }
 
       // Order is created as pending_payment — now start the actual Paystack
       // checkout. Cart is intentionally NOT cleared yet: if the buyer
@@ -544,9 +577,58 @@ export default function CheckoutPage() {
                       <span className="font-semibold">− {fmt(deliveryCreditApplied)}</span>
                     </div>
                   )}
+
+                  {walletBalance > 0 && (
+                    <div className="pt-1 pb-0.5">
+                      <label className="flex items-center justify-between gap-3 cursor-pointer">
+                        <span className="text-[13px] text-soil/70">
+                          Pay with wallet <span className="text-stone/40">({fmt(walletBalance)} available)</span>
+                        </span>
+                        <input
+                          type="checkbox"
+                          checked={useWallet}
+                          onChange={e => {
+                            setUseWallet(e.target.checked)
+                            if (!e.target.checked) setWalletAmountInput('')
+                          }}
+                          className="w-4 h-4 accent-pepper shrink-0"
+                        />
+                      </label>
+                      {useWallet && (
+                        <div className="mt-2 flex items-center gap-2">
+                          <span className="text-stone/50 text-[13px]">₦</span>
+                          <input
+                            type="number"
+                            inputMode="numeric"
+                            min={0}
+                            max={walletMaxApplicable}
+                            step={1}
+                            value={walletAmountInput}
+                            onChange={e => setWalletAmountInput(e.target.value)}
+                            placeholder={walletMaxApplicable.toLocaleString('en-NG')}
+                            className="flex-1 bg-[#eef1f4] border border-soil/12 rounded-lg px-2.5 py-1.5 text-[13px] text-soil outline-none focus:border-pepper"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setWalletAmountInput(String(walletMaxApplicable))}
+                            className="text-[11.5px] font-semibold text-pepper-deep shrink-0"
+                          >
+                            Max
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {walletAmountApplied > 0 && (
+                    <div className="flex justify-between text-[13px] text-pepper-deep">
+                      <span>Wallet applied</span>
+                      <span className="font-semibold">− {fmt(walletAmountApplied)}</span>
+                    </div>
+                  )}
+
                   <div className="flex justify-between font-body text-soil text-[16px] font-bold pt-2 border-t border-soil/8">
                     <span>Total</span>
-                    <span>{grandTotal ? fmt(grandTotal) : '—'}</span>
+                    <span>{grandTotal != null ? fmt(grandTotal) : '—'}</span>
                   </div>
                   <p className="text-[11px] text-stone/40">
                     {deliveryFee == null

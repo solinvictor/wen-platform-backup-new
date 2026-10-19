@@ -133,12 +133,16 @@ export async function POST(req: NextRequest) {
         console.error('[paystack-verify] credit_market_day_cashback failed:', cashbackError.message)
       }
 
-      // Spend whatever delivery credit was applied at checkout — reserved
-      // on the order row since creation, actually deducted only now that
-      // payment is confirmed. See redeem_delivery_credits().
+      // Spend whatever delivery credit / wallet balance was applied at
+      // checkout — reserved on the order row since creation, actually
+      // deducted only now that payment is confirmed.
       const { error: redeemError } = await supabase.rpc('redeem_delivery_credits', { p_order_id: order.id })
       if (redeemError) {
         console.error('[paystack-verify] redeem_delivery_credits failed:', redeemError.message)
+      }
+      const { error: walletRedeemError } = await supabase.rpc('redeem_wallet_applied', { p_order_id: order.id })
+      if (walletRedeemError) {
+        console.error('[paystack-verify] redeem_wallet_applied failed:', walletRedeemError.message)
       }
     }
 

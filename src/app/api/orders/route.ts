@@ -23,6 +23,7 @@ export async function POST(req: NextRequest) {
       fullName, phoneNumber, email, location, landmark,
       deliveryLat, deliveryLng,
       locationSource, buyerType, items, notes,
+      walletAmountRequested,
     } = body as {
       fullName?: string
       phoneNumber?: string
@@ -35,6 +36,7 @@ export async function POST(req: NextRequest) {
       buyerType?: string
       items?: CartItem[]
       notes?: string
+      walletAmountRequested?: number
     }
 
     if (
@@ -152,7 +154,34 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const amountTotal = itemsTotal + delivery.finalFee - deliveryCreditApplied
+    // Wallet (real money, from Paystack top-ups) — unlike delivery credit,
+    // this can cover ANY part of the order and isn't capped at 25%; the
+    // buyer is choosing to spend their own balance. The client sends how
+    // much they want applied (a toggle/amount at checkout), but the actual
+    // amount is always clamped server-side to what's really available —
+    // never trust the requested figure past that. Summed account-wide, same
+    // as delivery credit, via get_available_wallet_balance().
+    const remainingAfterCredit = Math.max(0, itemsTotal + delivery.finalFee - deliveryCreditApplied)
+    let walletAmountApplied = 0
+    if (userId && typeof walletAmountRequested === 'number' && walletAmountRequested > 0) {
+      const { data: availableWallet, error: walletError } = await supabase.rpc(
+        'get_available_wallet_balance',
+        { p_user_id: userId }
+      )
+      if (walletError) {
+        console.error('[orders] get_available_wallet_balance failed:', walletError.message)
+      } else {
+        walletAmountApplied = Math.round(
+          Math.max(0, Math.min(walletAmountRequested, Number(availableWallet ?? 0), remainingAfterCredit)) * 100
+        ) / 100
+      }
+    }
+
+    const amountTotal = Math.max(0, remainingAfterCredit - walletAmountApplied)
+    // True only when wallet + delivery credit cover the order in full —
+    // there's nothing left for Paystack to charge, so this order skips the
+    // payment gateway entirely and is paid immediately.
+    const fullyPaidByCredit = amountTotal <= 0 && (deliveryCreditApplied > 0 || walletAmountApplied > 0)
 
     const productsInterested = items.map(i => i.name).join(', ')
     const { data: buyer, error: buyerError } = await supabase
@@ -196,15 +225,35 @@ export async function POST(req: NextRequest) {
       market_day:               marketDay.marketDay,
       discount_amount:          0,
       delivery_credit_applied:  deliveryCreditApplied,
+      wallet_amount_applied:    walletAmountApplied,
       expected_delivery_date:   marketDay.deliveryDate,
       order_ref:                orderRef,
       amount_total:             amountTotal,
-      status:                   'pending_payment',
+      status:                   fullyPaidByCredit ? 'paid' : 'pending_payment',
     }).select('id').single()
 
     if (orderError || !order) {
       console.error('[orders] order insert failed:', orderError?.message)
       return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
+    }
+
+    // No Paystack step for this order (wallet + delivery credit covered it
+    // in full) — so nothing will ever call paystack-verify/webhook to do
+    // the usual post-payment redemption. Do it right here instead, same
+    // functions, same idempotency guards.
+    if (fullyPaidByCredit) {
+      if (deliveryCreditApplied > 0) {
+        const { error } = await supabase.rpc('redeem_delivery_credits', { p_order_id: order.id })
+        if (error) console.error('[orders] redeem_delivery_credits (fully-paid) failed:', error.message)
+      }
+      if (walletAmountApplied > 0) {
+        const { error } = await supabase.rpc('redeem_wallet_applied', { p_order_id: order.id })
+        if (error) console.error('[orders] redeem_wallet_applied (fully-paid) failed:', error.message)
+      }
+      if (marketDay.marketDay) {
+        const { error } = await supabase.rpc('credit_market_day_cashback', { p_order_id: order.id })
+        if (error) console.error('[orders] credit_market_day_cashback (fully-paid) failed:', error.message)
+      }
     }
 
     // --- Referral tracking ---
@@ -271,6 +320,8 @@ export async function POST(req: NextRequest) {
       deliveryDistanceKm:   delivery.distanceKm,
       deliveryDiscount:     delivery.discount,
       deliveryCreditApplied,
+      walletAmountApplied,
+      fullyPaidByCredit,
       expectedDeliveryDate: marketDay.deliveryDate,
       email:                email.trim(),
     })
