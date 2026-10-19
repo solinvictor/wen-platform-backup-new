@@ -99,7 +99,7 @@ export async function POST(req: NextRequest) {
         }, { status: 400 })
       }
 
-      const { data: buyer, error: buyerError } = await supabase
+      let { data: buyer } = await supabase
         .from('buyers')
         .select('id')
         .eq('user_id', user.id)
@@ -107,8 +107,35 @@ export async function POST(req: NextRequest) {
         .limit(1)
         .single()
 
-      if (buyerError || !buyer) {
-        return NextResponse.json({ error: 'Could not find your buyer account.' }, { status: 404 })
+      // A buyer row today is only ever created when someone places an
+      // order — there's no signup-time trigger for it. Someone who signs
+      // up and goes straight to funding their wallet (without ordering
+      // first) would otherwise hit a dead end here, so create a minimal
+      // buyer record on the fly instead of failing. They can fill in
+      // real delivery details later at checkout.
+      if (!buyer) {
+        const meta = (user.user_metadata ?? {}) as Record<string, unknown>
+        const metaName = typeof meta.full_name === 'string' ? meta.full_name.trim() : ''
+        const metaPhone = typeof meta.phone === 'string' ? meta.phone.trim() : ''
+
+        const { data: newBuyer, error: createError } = await supabase
+          .from('buyers')
+          .insert({
+            user_id: user.id,
+            full_name: metaName || (user.email?.split('@')[0] ?? 'WEN buyer'),
+            phone_number: metaPhone || 'Not provided',
+            email: user.email ?? '',
+            status: 'pending',
+          })
+          .select('id')
+          .single()
+
+        if (createError || !newBuyer) {
+          console.error('[paystack-initialize] failed to auto-create buyer for wallet funding:', createError?.message)
+          return NextResponse.json({ error: 'Could not set up your buyer account. Please try again.' }, { status: 500 })
+        }
+
+        buyer = newBuyer
       }
 
       email = user.email ?? ''
