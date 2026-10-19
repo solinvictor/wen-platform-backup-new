@@ -10,10 +10,9 @@ import { useCart } from '@/context/CartContext'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { FALLBACK_PRODUCTS, type Product } from '@/lib/fallback-products'
-import { ACTIVE_CATEGORY_META } from '@/lib/categories'
 import { BottomTabBar } from '@/components/BottomTabBar'
 const CATEGORY_LABELS: Record<string, string> = {
-  eggs: 'Eggs', fish: 'Fish', chicken: 'Chicken', rice: 'Rice', beans: 'Beans',
+  eggs: 'Eggs', fish: 'Fish', chicken: 'Chicken', rice: 'Rice', beans: 'Beans', other: 'Perks',
 }
 
 function fmt(price: number | null) {
@@ -142,10 +141,11 @@ function StoreInner() {
     load()
   }, [])
 
-  const activeCategorySlugs = useMemo(() => new Set(ACTIVE_CATEGORY_META.map((c) => c.slug)), [])
-
+  // Every available product from the DB shows here, whatever its category —
+  // ACTIVE_CATEGORY_META only curates the marketing surfaces (homepage,
+  // nav pills, footer); it must never hide real inventory on the store grid.
   const grouped = useMemo(() => {
-    let filtered = products.filter((p) => activeCategorySlugs.has(p.category))
+    let filtered = products.slice()
     if (query.trim()) filtered = filtered.filter(p => p.name.toLowerCase().includes(query.trim().toLowerCase()))
     if (categoryFilter) filtered = filtered.filter(p => p.category === categoryFilter)
     return filtered.reduce<Record<string, Product[]>>((acc, p) => {
