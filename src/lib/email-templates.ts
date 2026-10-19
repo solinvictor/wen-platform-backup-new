@@ -38,7 +38,7 @@ export function welcomeEmail({ name, referralCode }: { name: string; referralCod
         <p style="color:#8a8278;font-size:12.5px;margin:8px 0 0;">Share it — when someone orders using your code, you earn a reward in your WEN wallet.</p>
       </div>
     ` : ''}
-    <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://wenfoods.ng'}/store"
+    <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://wenfoods.com'}/store"
        style="display:inline-block;background:${PEPPER};color:#ffffff;text-decoration:none;font-size:14.5px;font-weight:600;padding:13px 24px;border-radius:14px;">
       Start shopping
     </a>

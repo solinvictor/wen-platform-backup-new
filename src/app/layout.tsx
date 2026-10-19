@@ -25,10 +25,30 @@ const jetbrainsMono = JetBrains_Mono({
   display: "swap",
 });
 
+const SITE_URL = "https://wenfoods.com"
+const TITLE = "WEN — Fresh Farm Produce, Direct From Trusted Farmers"
+const DESCRIPTION =
+  "WEN connects farmers directly to buyers to ensure fresh produce, fair pricing, and faster delivery across communities."
+
 export const metadata: Metadata = {
-  title: "WEN — Fresh Farm Produce, Direct From Trusted Farmers",
-  description:
-    "WEN connects farmers directly to buyers to ensure fresh produce, fair pricing, and faster delivery across communities.",
+  metadataBase: new URL(SITE_URL),
+  title: TITLE,
+  description: DESCRIPTION,
+  openGraph: {
+    title: TITLE,
+    description: DESCRIPTION,
+    url: SITE_URL,
+    siteName: "WEN",
+    type: "website",
+    locale: "en_NG",
+    // opengraph-image.png in this folder is picked up automatically.
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: TITLE,
+    description: DESCRIPTION,
+    // twitter-image.png in this folder is picked up automatically.
+  },
 };
 
 // True once an Adobe Fonts project ID is set in src/lib/typekit.ts
