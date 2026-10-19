@@ -9,8 +9,8 @@ export function MarketDayBanner({ compact = false }: { compact?: boolean }) {
   const [marketDay] = useState<MarketDayInfo>(() => getMarketDayInfo())
 
   const message = marketDay.isMarketDay
-    ? `Market Day · Order today, receive it tomorrow · ${marketDay.discountPercent}% off your basket · Fresh produce delivered on ${marketDay.deliveryWeekday}`
-    : `Market Day returns Tuesday and Friday · Fresh produce, selected and delivered by WEN`
+    ? `Market Day · Order today, receive it tomorrow · 20% off delivery + 5% cashback · Fresh produce delivered on ${marketDay.deliveryWeekday}`
+    : `Market Day returns Tuesday and Friday · 20% off delivery + 5% cashback · Fresh produce, selected and delivered by WEN`
 
   return (
     <section aria-label="Market Day offer" className="w-full min-w-0 overflow-hidden bg-soil text-white">

@@ -125,14 +125,12 @@ export async function POST(req: NextRequest) {
         .update({ status: 'paid', monnify_transaction_reference: reference.trim() })
         .eq('id', order.id)
 
-      const { error: referralError } = await supabase.rpc('credit_referral_reward', { p_order_id: order.id })
-      if (referralError) {
-        console.error('[paystack-verify] credit_referral_reward failed:', referralError.message)
-      }
-
-      const { error: cashbackError } = await supabase.rpc('credit_order_cashback', { p_order_id: order.id })
+      // Referral reward is no longer paid here — it only pays out once the
+      // order reaches status = 'delivered' (a DB trigger on orders handles
+      // that transition). Market day cashback, though, is tied to payment.
+      const { error: cashbackError } = await supabase.rpc('credit_market_day_cashback', { p_order_id: order.id })
       if (cashbackError) {
-        console.error('[paystack-verify] credit_order_cashback failed:', cashbackError.message)
+        console.error('[paystack-verify] credit_market_day_cashback failed:', cashbackError.message)
       }
     }
 

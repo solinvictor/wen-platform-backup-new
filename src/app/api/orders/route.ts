@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
-import { calculateMarketDayDiscount, getMarketDayInfo } from '@/lib/market-day'
+import { getMarketDayInfo } from '@/lib/market-day'
 import { haversineKm, calcDeliveryFee, WEN_HQ } from '@/lib/delivery'
 
 interface CartItem {
@@ -108,16 +108,15 @@ export async function POST(req: NextRequest) {
       itemsTotal += Number(product.price) * item.quantity
     }
 
-    // Market Day — 10% off product subtotal (unchanged)
     const marketDay = getMarketDayInfo()
-    const marketDayDiscount = calculateMarketDayDiscount(itemsTotal, marketDay)
 
-    // Distance-based delivery: ₦300/km from Welfare Quarters HQ
-    // 20% off delivery fee on Market Days (separate from the product discount)
+    // Distance-based delivery: ₦200/km from Welfare Quarters HQ
+    // 20% off delivery fee on Market Days; cashback (not a basket discount)
+    // is credited separately once the order is paid — see credit_market_day_cashback().
     const distanceKm = haversineKm(WEN_HQ.lat, WEN_HQ.lng, deliveryLat, deliveryLng)
     const delivery   = calcDeliveryFee(distanceKm, marketDay.isMarketDay)
 
-    const amountTotal = itemsTotal - marketDayDiscount + delivery.finalFee
+    const amountTotal = itemsTotal + delivery.finalFee
 
     let userId: string | null = null
     try {
@@ -170,7 +169,7 @@ export async function POST(req: NextRequest) {
       delivery_distance_km:     delivery.distanceKm,
       delivery_discount_amount: delivery.discount,
       market_day:               marketDay.marketDay,
-      discount_amount:          marketDayDiscount,
+      discount_amount:          0,
       expected_delivery_date:   marketDay.deliveryDate,
       order_ref:                orderRef,
       amount_total:             amountTotal,
@@ -193,16 +192,43 @@ export async function POST(req: NextRequest) {
           .single()
 
         if (referrer && referrer.id !== buyer.id) {
-          // 'pending' until the order is actually paid — credit_referral_reward()
-          // (called from the Paystack webhook/verify) flips this to 'converted'
-          // and pays the referrer then, so an abandoned cart never earns a reward.
-          await supabase.from('referrals').insert({
-            referrer_id: referrer.id,
-            referred_id: buyer.id,
-            order_id:    order.id,
-            code_used:   refCode,
-            status:      'pending',
-          })
+          // The referral link self-destructs once this person's referral
+          // cycle has already completed once (an earlier order of theirs
+          // converted) — a buyers row is created fresh per order, so this
+          // has to be checked across every buyers row tied to the same
+          // logged-in account, not just this one. Guests have no persistent
+          // identity across orders, so this is a no-op for them.
+          let alreadyConverted = false
+          if (userId) {
+            const { data: priorBuyers } = await supabase
+              .from('buyers')
+              .select('id')
+              .eq('user_id', userId)
+            const priorIds = (priorBuyers ?? []).map(b => b.id)
+            if (priorIds.length > 0) {
+              const { data: converted } = await supabase
+                .from('referrals')
+                .select('id')
+                .in('referred_id', priorIds)
+                .eq('status', 'converted')
+                .limit(1)
+              alreadyConverted = !!converted && converted.length > 0
+            }
+          }
+
+          if (!alreadyConverted) {
+            // 'pending' until the order is actually delivered —
+            // credit_referral_reward() (fired by a DB trigger on orders
+            // when status flips to 'delivered') flips this to 'converted'
+            // and pays the referrer then.
+            await supabase.from('referrals').insert({
+              referrer_id: referrer.id,
+              referred_id: buyer.id,
+              order_id:    order.id,
+              code_used:   refCode,
+              status:      'pending',
+            })
+          }
         }
       } catch (refErr) {
         // Non-fatal — order still goes through
@@ -214,7 +240,7 @@ export async function POST(req: NextRequest) {
       success:              true,
       orderRef,
       amountTotal,
-      discountAmount:       marketDayDiscount,
+      discountAmount:       0,
       deliveryFee:          delivery.finalFee,
       deliveryDistanceKm:   delivery.distanceKm,
       deliveryDiscount:     delivery.discount,

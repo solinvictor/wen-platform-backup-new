@@ -70,7 +70,7 @@ const FAQS = [
   },
   {
     q: 'How much is delivery, and how long does it take?',
-    a: 'Delivery is ₦300 per km from our dispatch point. On Market Days (Tuesday and Friday) you get 20% off the delivery fee. Final cost is shown at checkout before you pay.',
+    a: 'Delivery is ₦200 per km from our dispatch point. On Market Days (Tuesday and Friday) you get 20% off the delivery fee, plus 5% cashback on your order. Final cost is shown at checkout before you pay.',
   },
   {
     q: 'What can I actually order from WEN?',

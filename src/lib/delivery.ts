@@ -2,13 +2,13 @@
  * WEN Foods — distance-based delivery pricing
  *
  * HQ: Welfare Quarters, Makurdi, Benue State
- * Rate: ₦300 per km
- * Market Day discount: 20% off the delivery fee (separate from the 10% product discount)
+ * Rate: ₦200 per km
+ * Market Day discount: 20% off the delivery fee
  */
 
 export const WEN_HQ = { lat: 7.7290, lng: 8.5247 } // Welfare Quarters, Makurdi
 
-export const DELIVERY_RATE_PER_KM  = 300   // ₦ per km
+export const DELIVERY_RATE_PER_KM  = 200   // ₦ per km
 export const MARKET_DAY_DELIVERY_DISCOUNT_PERCENT = 20
 export const MIN_DELIVERY_FEE = 300        // floor — never charge less than ₦300
 

@@ -10,7 +10,7 @@ import {
 } from 'lucide-react'
 import { Logo } from '@/components/Logo'
 import { MarketDayBanner } from '@/components/MarketDayBanner'
-import { calculateMarketDayDiscount, getMarketDayInfo, type MarketDayInfo } from '@/lib/market-day'
+import { getMarketDayInfo, type MarketDayInfo } from '@/lib/market-day'
 import { haversineKm, calcDeliveryFee, WEN_HQ, type DeliveryCalc } from '@/lib/delivery'
 import { AddressAutocomplete, type AddressSuggestion } from '@/components/AddressAutocomplete'
 import { validatePhone } from '@/lib/validate'
@@ -72,10 +72,9 @@ export default function CheckoutPage() {
   }, [deliveryCoords, marketDay])
 
   const hasPrices         = cartLines.some(l => l.price)
-  const marketDayDiscount = marketDay && hasPrices ? calculateMarketDayDiscount(cartTotal ?? 0, marketDay) : 0
   const deliveryFee       = deliveryCalc?.finalFee ?? null
   const grandTotal        = hasPrices && deliveryFee != null
-    ? (cartTotal ?? 0) - marketDayDiscount + deliveryFee
+    ? (cartTotal ?? 0) + deliveryFee
     : null
 
   // Order fields appear on the page top-to-bottom — used to scroll/focus
@@ -254,7 +253,7 @@ export default function CheckoutPage() {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-[14px] font-semibold text-soil">
-                            ₦300 per km · {deliveryCalc.distanceKm} km
+                            ₦200 per km · {deliveryCalc.distanceKm} km
                           </p>
                           <p className="text-[12px] text-stone/50 mt-0.5">
                             {locationSource === 'address'
@@ -522,12 +521,6 @@ export default function CheckoutPage() {
                     <div className="flex justify-between text-[13px] text-pepper-deep">
                       <span>Market Day delivery (20% off)</span>
                       <span className="font-semibold">− {fmt(deliveryCalc!.discount)}</span>
-                    </div>
-                  )}
-                  {marketDayDiscount > 0 && (
-                    <div className="flex justify-between text-[13px] text-pepper-deep">
-                      <span>Market Day basket ({marketDay?.discountPercent ?? 0}% off)</span>
-                      <span className="font-semibold">− {fmt(marketDayDiscount)}</span>
                     </div>
                   )}
                   <div className="flex justify-between font-body text-soil text-[16px] font-bold pt-2 border-t border-soil/8">

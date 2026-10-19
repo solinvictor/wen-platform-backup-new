@@ -1,5 +1,4 @@
 export const MARKET_DAY_TIME_ZONE = 'Africa/Lagos'
-export const MARKET_DAY_DISCOUNT_PERCENT = 10
 
 const MARKET_DAY_WEEKDAYS = new Set(['Tuesday', 'Friday'])
 
@@ -9,7 +8,6 @@ export interface MarketDayInfo {
   marketDay: string | null
   deliveryWeekday: string | null
   deliveryDate: string | null
-  discountPercent: number
 }
 
 function getDateParts(date: Date) {
@@ -58,14 +56,5 @@ export function getMarketDayInfo(now = new Date()): MarketDayInfo {
     marketDay: isMarketDay ? weekday : null,
     deliveryWeekday: tomorrow?.weekday ?? null,
     deliveryDate: tomorrow?.date ?? null,
-    discountPercent: isMarketDay ? MARKET_DAY_DISCOUNT_PERCENT : 0,
   }
-}
-
-export function calculateMarketDayDiscount(
-  subtotal: number,
-  info = getMarketDayInfo(),
-) {
-  if (!info.isMarketDay || subtotal <= 0) return 0
-  return Math.round(subtotal * (info.discountPercent / 100))
 }
