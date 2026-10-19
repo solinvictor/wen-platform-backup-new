@@ -202,21 +202,35 @@ function AccountClientInner({ userId, initialName, initialEmail, initialPhone, r
   // newest — a wallet belongs to the account, and a new buyers row gets
   // created every order, so looking this up by buyerId would show ₦0 the
   // moment a second order's buyer row becomes the "latest" one.
-  useEffect(() => {
+  const [walletRefreshing, setWalletRefreshing] = useState(false)
+
+  async function fetchWallet() {
     const supabase = createClient()
-    Promise.all([
+    const [walletRes, txRes] = await Promise.all([
       supabase.from('wallets').select('balance').eq('user_id', userId).maybeSingle(),
       supabase.from('wallet_transactions')
         .select('id, type, amount, reason, balance_after, created_at')
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
         .limit(20),
-    ]).then(([walletRes, txRes]) => {
-      setBalance(walletRes.data ? Number(walletRes.data.balance) : 0)
-      setTransactions((txRes.data ?? []) as WalletTransaction[])
-      setWalletLoading(false)
-    })
+    ])
+    setBalance(walletRes.data ? Number(walletRes.data.balance) : 0)
+    setTransactions((txRes.data ?? []) as WalletTransaction[])
+  }
+
+  useEffect(() => {
+    fetchWallet().finally(() => setWalletLoading(false))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId])
+
+  async function handleRefreshWallet() {
+    setWalletRefreshing(true)
+    try {
+      await fetchWallet()
+    } finally {
+      setWalletRefreshing(false)
+    }
+  }
 
   async function handleFundWallet(e: React.FormEvent) {
     e.preventDefault()
@@ -386,11 +400,24 @@ function AccountClientInner({ userId, initialName, initialEmail, initialPhone, r
         {tab === 'wallet' && (
           <div className="space-y-3">
             <div className="bg-soil rounded-2xl px-5 py-5 text-white">
-              <p className="text-[12px] font-semibold text-white/60 uppercase tracking-wider mb-1">Wallet balance</p>
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-[12px] font-semibold text-white/60 uppercase tracking-wider">Wallet balance</p>
+                <button
+                  onClick={handleRefreshWallet}
+                  disabled={walletLoading || walletRefreshing}
+                  aria-label="Refresh wallet balance"
+                  className="text-white/50 hover:text-white transition-colors disabled:opacity-40 p-1 -m-1"
+                >
+                  <RefreshCw size={14} className={walletRefreshing ? 'animate-spin' : ''} />
+                </button>
+              </div>
               {walletLoading ? (
                 <Loader2 size={20} className="animate-spin text-white/60 mt-1" />
               ) : (
                 <p className="font-data text-[28px] font-bold">{fmtNaira(balance ?? 0)}</p>
+              )}
+              {initialName && (
+                <p className="text-[13px] font-medium text-white/70 mt-1.5">{initialName}</p>
               )}
               <p className="text-[11.5px] text-white/50 mt-1.5">In-house credit — not withdrawable, used for your WEN orders and rewards.</p>
             </div>
