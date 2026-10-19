@@ -28,7 +28,7 @@ export function welcomeEmail({ name, referralCode }: { name: string; referralCod
     <h1 style="color:${SOIL};font-size:22px;margin:0 0 12px;">Welcome to WEN, ${firstName} 🌾</h1>
     <p style="color:#5c554c;font-size:14.5px;line-height:1.6;margin:0 0 16px;">
       Your account is confirmed. WEN brings fresh produce straight from farmers to your door —
-      browse the store, and look out for <strong>Market Day</strong> every Tuesday and Friday for
+      browse the store, and look out for <strong>Market Day</strong> every Wednesday and Saturday for
       an extra discount on your basket.
     </p>
     ${referralCode ? `

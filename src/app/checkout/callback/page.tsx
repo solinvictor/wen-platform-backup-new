@@ -112,7 +112,7 @@ function CallbackContent() {
   // ── Paid ──────────────────────────────────────────────────────────────
   const deliveryText = order?.delivery_type === 'express'
     ? 'Dispatched within hours — arrives within 24 hours.'
-    : 'Harvested fresh — delivered within about 3 days.'
+    : 'Harvested fresh — we deliver as soon as possible.'
 
   return (
     <div className="min-h-screen bg-[#eef1f4] flex flex-col">

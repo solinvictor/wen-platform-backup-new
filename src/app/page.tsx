@@ -70,7 +70,7 @@ const FAQS = [
   },
   {
     q: 'How much is delivery, and how long does it take?',
-    a: 'Delivery is ₦200 per km from our dispatch point. On Market Days (Tuesday and Friday) you get 20% off the delivery fee, plus 5% of your order back as delivery credit (capped at ₦500). Final cost is shown at checkout before you pay.',
+    a: 'Delivery is ₦200 per km from our dispatch point. On Market Days (Wednesday and Saturday) you get 20% off the delivery fee, plus 5% of your order back as delivery credit (capped at ₦500). Final cost is shown at checkout before you pay.',
   },
   {
     q: 'What is delivery credit?',

@@ -1,6 +1,6 @@
 export const MARKET_DAY_TIME_ZONE = 'Africa/Lagos'
 
-const MARKET_DAY_WEEKDAYS = new Set(['Tuesday', 'Friday'])
+const MARKET_DAY_WEEKDAYS = new Set(['Wednesday', 'Saturday'])
 
 export interface MarketDayInfo {
   isMarketDay: boolean

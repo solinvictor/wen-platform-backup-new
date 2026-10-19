@@ -72,7 +72,7 @@ function DeliveryBadge({ type }: { type: Order['delivery_type'] }) {
   if (!type) return null
   return type === 'express'
     ? <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-soil/8 text-soil/70 text-[11px] font-semibold border border-soil/12">Express · 24h</span>
-    : <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#eef1f4] text-stone text-[11px] font-semibold border border-soil/10">Standard · 3 days</span>
+    : <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#eef1f4] text-stone text-[11px] font-semibold border border-soil/10">Standard · ASAP</span>
 }
 
 // ── Order card ───────────────────────────────────────────────────────────────

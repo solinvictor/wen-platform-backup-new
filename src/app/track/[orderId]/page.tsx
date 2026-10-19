@@ -15,7 +15,7 @@ interface TrackedOrder {
   product_summary: string
   delivery_type: 'standard' | 'express' | null
   delivery_fee: number | null
-  market_day?: 'Tuesday' | 'Friday' | null
+  market_day?: 'Wednesday' | 'Saturday' | null
   discount_amount?: number | null
   expected_delivery_date?: string | null
   status: 'pending_payment' | 'pending' | 'matched' | 'in_progress' | 'delivered' | 'cancelled'

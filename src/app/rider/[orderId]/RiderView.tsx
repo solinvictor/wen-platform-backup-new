@@ -350,7 +350,7 @@ export default function RiderView({ order: initial }: { order: Order }) {
               <div className="flex items-center justify-between text-[13px]">
                 <span className="text-stone/50 flex items-center gap-1.5">
                   <Clock size={12} />
-                  {order.delivery_type === 'express' ? 'Express (24hrs)' : 'Standard (3 days)'}
+                  {order.delivery_type === 'express' ? 'Express (24hrs)' : 'Standard (ASAP)'}
                 </span>
                 <span className="font-semibold text-soil">{fmt(order.delivery_fee)}</span>
               </div>
