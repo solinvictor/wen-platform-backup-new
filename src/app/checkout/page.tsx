@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useCart } from '@/context/CartContext'
 import {
   ChevronLeft, ShoppingBag, Loader2, Truck,
-  Phone, MapPin, User, FileText, Navigation, Mail,
+  Phone, MapPin, User, FileText, Navigation, Mail, CalendarDays, Check,
 } from 'lucide-react'
 import { Logo } from '@/components/Logo'
 import { MarketDayBanner } from '@/components/MarketDayBanner'
@@ -285,7 +285,43 @@ export default function CheckoutPage() {
                   <Truck size={16} className="text-pepper" />
                   <h2 className="font-body text-soil text-[16px] font-semibold">Delivery</h2>
                 </div>
-                <div className="px-5 py-4">
+                <div className="px-5 pt-4">
+                  <p className="text-[12px] font-semibold text-soil/50 uppercase tracking-wide mb-2.5">Delivery type</p>
+                  <div className="grid grid-cols-2 gap-2.5 mb-1">
+                    <div className={`rounded-xl border px-3.5 py-3 ${
+                      !marketDay?.isMarketDay
+                        ? 'border-pepper bg-pepper/5'
+                        : 'border-soil/10 bg-grain-dim'
+                    }`}>
+                      <div className="flex items-center justify-between mb-1">
+                        <Truck size={15} className={!marketDay?.isMarketDay ? 'text-pepper-deep' : 'text-stone/40'} />
+                        {!marketDay?.isMarketDay && <Check size={14} className="text-pepper-deep" />}
+                      </div>
+                      <p className="text-[13px] font-semibold text-soil">Standard</p>
+                      <p className="text-[11px] text-stone/50 mt-0.5">We deliver as soon as possible</p>
+                    </div>
+                    <div className={`rounded-xl border px-3.5 py-3 ${
+                      marketDay?.isMarketDay
+                        ? 'border-pepper bg-pepper/5'
+                        : 'border-soil/10 bg-grain-dim opacity-60'
+                    }`}>
+                      <div className="flex items-center justify-between mb-1">
+                        <CalendarDays size={15} className={marketDay?.isMarketDay ? 'text-pepper-deep' : 'text-stone/40'} />
+                        {marketDay?.isMarketDay && <Check size={14} className="text-pepper-deep" />}
+                      </div>
+                      <p className="text-[13px] font-semibold text-soil">Market Day</p>
+                      <p className="text-[11px] text-stone/50 mt-0.5">
+                        {marketDay?.isMarketDay ? '20% off delivery + 5% cashback' : 'Wed & Sat — 20% off + 5% cashback'}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-stone/40 mb-2">
+                    {marketDay?.isMarketDay
+                      ? 'Today is a Market Day — the discount and cashback below are applied automatically.'
+                      : 'Market Day pricing applies automatically on Wednesdays and Saturdays.'}
+                  </p>
+                </div>
+                <div className="px-5 pb-4">
                   {!deliveryCoords ? (
                     <div className="flex items-center gap-3 text-[13px] text-stone/50">
                       <MapPin size={14} className="shrink-0" />
