@@ -194,6 +194,14 @@ export async function POST(req: NextRequest) {
     if (cashbackError) {
       console.error('[paystack-webhook] credit_market_day_cashback failed:', cashbackError.message)
     }
+
+    // Spend whatever delivery credit was applied at checkout — reserved on
+    // the order row since creation, actually deducted only now that payment
+    // is confirmed. See redeem_delivery_credits().
+    const { error: redeemError } = await supabase.rpc('redeem_delivery_credits', { p_order_id: order.id })
+    if (redeemError) {
+      console.error('[paystack-webhook] redeem_delivery_credits failed:', redeemError.message)
+    }
   }
 
   return NextResponse.json({ received: true })

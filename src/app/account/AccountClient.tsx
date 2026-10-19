@@ -183,6 +183,20 @@ function AccountClientInner({ userId, initialName, initialEmail, initialPhone, r
   const [funding, setFunding]             = useState(false)
   const [fundError, setFundError]         = useState('')
 
+  // Delivery credit — a separate, delivery-fee-only balance (signup bonus +
+  // market-day cashback), summed across every buyers row tied to this
+  // account. Distinct from the general wallet above.
+  const [deliveryCredit, setDeliveryCredit]               = useState<number | null>(null)
+  const [deliveryCreditLoading, setDeliveryCreditLoading] = useState(true)
+
+  useEffect(() => {
+    fetch('/api/account/delivery-credits')
+      .then(res => res.json())
+      .then(data => setDeliveryCredit(Number(data?.available ?? 0)))
+      .catch(() => setDeliveryCredit(0))
+      .finally(() => setDeliveryCreditLoading(false))
+  }, [])
+
   // ── Fetch wallet ─────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!buyerId) { setWalletLoading(false); return }
@@ -377,6 +391,20 @@ function AccountClientInner({ userId, initialName, initialEmail, initialPhone, r
               )}
               <p className="text-[11.5px] text-white/50 mt-1.5">In-house credit — not withdrawable, used for your WEN orders and rewards.</p>
             </div>
+
+            {(deliveryCreditLoading || (deliveryCredit ?? 0) > 0) && (
+              <div className="bg-white border border-soil/10 rounded-2xl px-5 py-4">
+                <p className="text-[12px] font-semibold text-stone/50 uppercase tracking-wider mb-1">Delivery credit</p>
+                {deliveryCreditLoading ? (
+                  <Loader2 size={18} className="animate-spin text-stone/40 mt-1" />
+                ) : (
+                  <p className="font-data text-[22px] font-bold text-pepper-deep">{fmtNaira(deliveryCredit ?? 0)}</p>
+                )}
+                <p className="text-[11.5px] text-stone/45 mt-1">
+                  From your signup bonus and Market Day cashback — applies automatically to the delivery fee at checkout (up to 25% of it per order), and expires if unused.
+                </p>
+              </div>
+            )}
 
             <div className="bg-white border border-soil/10 rounded-2xl px-5 py-5">
               <h2 className="font-body text-soil font-bold text-[15px] mb-3">Fund your wallet</h2>

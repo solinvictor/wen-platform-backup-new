@@ -116,8 +116,6 @@ export async function POST(req: NextRequest) {
     const distanceKm = haversineKm(WEN_HQ.lat, WEN_HQ.lng, deliveryLat, deliveryLng)
     const delivery   = calcDeliveryFee(distanceKm, marketDay.isMarketDay)
 
-    const amountTotal = itemsTotal + delivery.finalFee
-
     let userId: string | null = null
     try {
       const url = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -128,6 +126,33 @@ export async function POST(req: NextRequest) {
         userId = user?.id ?? null
       }
     } catch { /* guest checkout */ }
+
+    // Delivery credit (signup bonus / market-day cashback) — delivery-fee-only,
+    // capped at 25% of THIS order's delivery fee (the pricing meeting's
+    // stacking guardrail). Looked up across every buyers row tied to this
+    // account, not just whichever buyer row this order creates — see
+    // get_available_delivery_credit(). Guests have no persistent identity to
+    // hold a credit balance against, so this is always 0 for them.
+    // Reflected in amount_total immediately so Paystack charges the
+    // discounted amount; only actually deducted from delivery_credits once
+    // this order is confirmed paid (redeem_delivery_credits()).
+    let deliveryCreditApplied = 0
+    if (userId) {
+      const { data: availableCredit, error: creditError } = await supabase.rpc(
+        'get_available_delivery_credit',
+        { p_user_id: userId }
+      )
+      if (creditError) {
+        console.error('[orders] get_available_delivery_credit failed:', creditError.message)
+      } else {
+        const cap = delivery.finalFee * 0.25
+        deliveryCreditApplied = Math.round(
+          Math.max(0, Math.min(Number(availableCredit ?? 0), cap, delivery.finalFee)) * 100
+        ) / 100
+      }
+    }
+
+    const amountTotal = itemsTotal + delivery.finalFee - deliveryCreditApplied
 
     const productsInterested = items.map(i => i.name).join(', ')
     const { data: buyer, error: buyerError } = await supabase
@@ -170,6 +195,7 @@ export async function POST(req: NextRequest) {
       delivery_discount_amount: delivery.discount,
       market_day:               marketDay.marketDay,
       discount_amount:          0,
+      delivery_credit_applied:  deliveryCreditApplied,
       expected_delivery_date:   marketDay.deliveryDate,
       order_ref:                orderRef,
       amount_total:             amountTotal,
@@ -244,6 +270,7 @@ export async function POST(req: NextRequest) {
       deliveryFee:          delivery.finalFee,
       deliveryDistanceKm:   delivery.distanceKm,
       deliveryDiscount:     delivery.discount,
+      deliveryCreditApplied,
       expectedDeliveryDate: marketDay.deliveryDate,
       email:                email.trim(),
     })

@@ -70,7 +70,11 @@ const FAQS = [
   },
   {
     q: 'How much is delivery, and how long does it take?',
-    a: 'Delivery is ₦200 per km from our dispatch point. On Market Days (Tuesday and Friday) you get 20% off the delivery fee, plus 5% cashback on your order. Final cost is shown at checkout before you pay.',
+    a: 'Delivery is ₦200 per km from our dispatch point. On Market Days (Tuesday and Friday) you get 20% off the delivery fee, plus 5% of your order back as delivery credit (capped at ₦500). Final cost is shown at checkout before you pay.',
+  },
+  {
+    q: 'What is delivery credit?',
+    a: 'A balance that only goes toward your delivery fee — not the rest of your order. You get ₦500 of it when you sign up, plus more from Market Day orders. It’s applied automatically at checkout (up to 25% of that order’s delivery fee) and expires if unused, so it’s worth placing an order soon after you get some.',
   },
   {
     q: 'What can I actually order from WEN?',

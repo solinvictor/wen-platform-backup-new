@@ -55,6 +55,7 @@ export default function CheckoutPage() {
   const [showMap, setShowMap]       = useState(false)
   const [marketDay, setMarketDay]   = useState<MarketDayInfo | null>(null)
   const [deliveryCalc, setDeliveryCalc] = useState<DeliveryCalc | null>(null)
+  const [availableCredit, setAvailableCredit] = useState(0)
 
   useEffect(() => {
     if (cartCount === 0) router.replace('/store')
@@ -62,6 +63,15 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     setMarketDay(getMarketDayInfo())
+  }, [])
+
+  // Preview-only — the server independently recomputes and applies this at
+  // order creation (api/orders/route.ts). Silently 0 for guests / on error.
+  useEffect(() => {
+    fetch('/api/account/delivery-credits')
+      .then(res => res.json())
+      .then(data => setAvailableCredit(Number(data?.available ?? 0)))
+      .catch(() => {})
   }, [])
 
   // Recalculate delivery fee whenever the selected address, pin, or market-day state changes
@@ -73,8 +83,13 @@ export default function CheckoutPage() {
 
   const hasPrices         = cartLines.some(l => l.price)
   const deliveryFee       = deliveryCalc?.finalFee ?? null
+  // Preview of the 25%-of-delivery-fee stacking guardrail — the server is
+  // the source of truth for the actual amount charged.
+  const deliveryCreditApplied = deliveryFee != null
+    ? Math.round(Math.max(0, Math.min(availableCredit, deliveryFee * 0.25, deliveryFee)) * 100) / 100
+    : 0
   const grandTotal        = hasPrices && deliveryFee != null
-    ? (cartTotal ?? 0) + deliveryFee
+    ? (cartTotal ?? 0) + deliveryFee - deliveryCreditApplied
     : null
 
   // Order fields appear on the page top-to-bottom — used to scroll/focus
@@ -521,6 +536,12 @@ export default function CheckoutPage() {
                     <div className="flex justify-between text-[13px] text-pepper-deep">
                       <span>Market Day delivery (20% off)</span>
                       <span className="font-semibold">− {fmt(deliveryCalc!.discount)}</span>
+                    </div>
+                  )}
+                  {deliveryCreditApplied > 0 && (
+                    <div className="flex justify-between text-[13px] text-pepper-deep">
+                      <span>Delivery credit applied</span>
+                      <span className="font-semibold">− {fmt(deliveryCreditApplied)}</span>
                     </div>
                   )}
                   <div className="flex justify-between font-body text-soil text-[16px] font-bold pt-2 border-t border-soil/8">

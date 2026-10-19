@@ -106,7 +106,10 @@ function SignupForm() {
 
       <div className="w-full max-w-sm">
         <h1 className="font-body text-soil text-2xl font-bold mb-1">Create your account</h1>
-        <p className="text-stone/60 text-[14px] mb-8">Fresh produce, delivered to your door.</p>
+        <p className="text-stone/60 text-[14px] mb-2">Fresh produce, delivered to your door.</p>
+        <p className="inline-block bg-pepper/8 text-pepper-deep text-[12.5px] font-semibold px-3 py-1.5 rounded-full mb-6">
+          Get ₦500 delivery credit when you sign up
+        </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
 
