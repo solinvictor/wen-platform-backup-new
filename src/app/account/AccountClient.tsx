@@ -198,14 +198,17 @@ function AccountClientInner({ userId, initialName, initialEmail, initialPhone, r
   }, [])
 
   // ── Fetch wallet ─────────────────────────────────────────────────────────────
+  // Keyed by account (user_id), not by whichever buyer row happens to be
+  // newest — a wallet belongs to the account, and a new buyers row gets
+  // created every order, so looking this up by buyerId would show ₦0 the
+  // moment a second order's buyer row becomes the "latest" one.
   useEffect(() => {
-    if (!buyerId) { setWalletLoading(false); return }
     const supabase = createClient()
     Promise.all([
-      supabase.from('wallets').select('balance').eq('buyer_id', buyerId).single(),
+      supabase.from('wallets').select('balance').eq('user_id', userId).maybeSingle(),
       supabase.from('wallet_transactions')
         .select('id, type, amount, reason, balance_after, created_at')
-        .eq('buyer_id', buyerId)
+        .eq('user_id', userId)
         .order('created_at', { ascending: false })
         .limit(20),
     ]).then(([walletRes, txRes]) => {
@@ -213,7 +216,7 @@ function AccountClientInner({ userId, initialName, initialEmail, initialPhone, r
       setTransactions((txRes.data ?? []) as WalletTransaction[])
       setWalletLoading(false)
     })
-  }, [buyerId])
+  }, [userId])
 
   async function handleFundWallet(e: React.FormEvent) {
     e.preventDefault()
