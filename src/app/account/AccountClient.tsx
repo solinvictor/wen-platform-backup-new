@@ -401,15 +401,21 @@ function AccountClientInner({ userId, initialName, initialEmail, initialPhone, r
           <div className="space-y-3">
             <div className="bg-soil rounded-2xl px-5 py-5 text-white">
               <div className="flex items-center justify-between mb-1">
-                <p className="text-[12px] font-semibold text-white/60 uppercase tracking-wider">Wallet balance</p>
-                <button
-                  onClick={handleRefreshWallet}
-                  disabled={walletLoading || walletRefreshing}
-                  aria-label="Refresh wallet balance"
-                  className="text-white/50 hover:text-white transition-colors disabled:opacity-40 p-1 -m-1"
-                >
-                  <RefreshCw size={14} className={walletRefreshing ? 'animate-spin' : ''} />
-                </button>
+                <span className="flex items-center gap-1.5 text-[12px] font-semibold text-white/60 uppercase tracking-wider">
+                  <Wallet size={13} />
+                  Wallet balance
+                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wide bg-leaf/20 text-leaf px-2 py-0.5 rounded-full">Withdrawable</span>
+                  <button
+                    onClick={handleRefreshWallet}
+                    disabled={walletLoading || walletRefreshing}
+                    aria-label="Refresh wallet balance"
+                    className="text-white/50 hover:text-white transition-colors disabled:opacity-40 p-1 -m-1"
+                  >
+                    <RefreshCw size={14} className={walletRefreshing ? 'animate-spin' : ''} />
+                  </button>
+                </div>
               </div>
               {walletLoading ? (
                 <Loader2 size={20} className="animate-spin text-white/60 mt-1" />
@@ -419,18 +425,24 @@ function AccountClientInner({ userId, initialName, initialEmail, initialPhone, r
               {initialName && (
                 <p className="text-[13px] font-medium text-white/70 mt-1.5">{initialName}</p>
               )}
-              <p className="text-[11.5px] text-white/50 mt-1.5">In-house credit — not withdrawable, used for your WEN orders and rewards.</p>
+              <p className="text-[11.5px] text-white/50 mt-1.5">Real cash — not restricted to delivery fees, use it on any part of your order.</p>
             </div>
 
             {(deliveryCreditLoading || (deliveryCredit ?? 0) > 0) && (
-              <div className="bg-white border border-soil/10 rounded-2xl px-5 py-4">
-                <p className="text-[12px] font-semibold text-stone/50 uppercase tracking-wider mb-1">Delivery credit</p>
+              <div className="bg-soil rounded-2xl px-5 py-5 text-white">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="flex items-center gap-1.5 text-[12px] font-semibold text-white/60 uppercase tracking-wider">
+                    <Truck size={13} />
+                    Delivery credit
+                  </span>
+                  <span className="text-[10px] font-bold uppercase tracking-wide bg-white/15 text-white/70 px-2 py-0.5 rounded-full">Not withdrawable</span>
+                </div>
                 {deliveryCreditLoading ? (
-                  <Loader2 size={18} className="animate-spin text-stone/40 mt-1" />
+                  <Loader2 size={20} className="animate-spin text-white/60 mt-1" />
                 ) : (
-                  <p className="font-data text-[22px] font-bold text-pepper-deep">{fmtNaira(deliveryCredit ?? 0)}</p>
+                  <p className="font-data text-[28px] font-bold">{fmtNaira(deliveryCredit ?? 0)}</p>
                 )}
-                <p className="text-[11.5px] text-stone/45 mt-1">
+                <p className="text-[11.5px] text-white/50 mt-1.5">
                   From your signup bonus and Market Day cashback — applies automatically to the delivery fee at checkout (up to 25% of it per order), and expires if unused.
                 </p>
               </div>
