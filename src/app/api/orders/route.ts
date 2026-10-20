@@ -274,57 +274,74 @@ export async function POST(req: NextRequest) {
     }
 
     // --- Referral tracking ---
-    const refCode = req.cookies.get('wen_ref')?.value?.trim().toUpperCase()
-    if (refCode) {
+    // Attribution is permanent, stored on the account (profiles.referred_by_user_id)
+    // the first time a valid referral code is used, and never cleared — every
+    // future order from this account checks it fresh and earns referral
+    // cashback, not just the first one. The wen_ref cookie only matters for
+    // establishing that attribution in the first place; once it's set, the
+    // cookie is irrelevant. Guests have no persistent account to attach this
+    // to, so referral tracking is a no-op for them, same as before.
+    if (userId) {
       try {
-        const { data: referrer } = await supabase
-          .from('buyers')
-          .select('id')
-          .eq('referral_code', refCode)
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('referred_by_user_id')
+          .eq('id', userId)
           .single()
 
-        if (referrer && referrer.id !== buyer.id) {
-          // The referral link self-destructs once this person's referral
-          // cycle has already completed once (an earlier order of theirs
-          // converted) — a buyers row is created fresh per order, so this
-          // has to be checked across every buyers row tied to the same
-          // logged-in account, not just this one. Guests have no persistent
-          // identity across orders, so this is a no-op for them.
-          let alreadyConverted = false
-          if (userId) {
-            const { data: priorBuyers } = await supabase
+        let referrerUserId: string | null = profile?.referred_by_user_id ?? null
+        let codeUsed = 'ACCOUNT_LINKED' // true for every order after the first
+
+        if (!referrerUserId) {
+          const refCode = req.cookies.get('wen_ref')?.value?.trim().toUpperCase()
+          if (refCode) {
+            const { data: referrerBuyer } = await supabase
               .from('buyers')
-              .select('id')
-              .eq('user_id', userId)
-            const priorIds = (priorBuyers ?? []).map(b => b.id)
-            if (priorIds.length > 0) {
-              const { data: converted } = await supabase
-                .from('referrals')
-                .select('id')
-                .in('referred_id', priorIds)
-                .eq('status', 'converted')
-                .limit(1)
-              alreadyConverted = !!converted && converted.length > 0
+              .select('user_id')
+              .eq('referral_code', refCode)
+              .single()
+
+            if (referrerBuyer?.user_id && referrerBuyer.user_id !== userId) {
+              await supabase
+                .from('profiles')
+                .update({ referred_by_user_id: referrerBuyer.user_id })
+                .eq('id', userId)
+              referrerUserId = referrerBuyer.user_id
+              codeUsed = refCode // this is the order that actually established attribution
             }
           }
+        }
 
-          if (!alreadyConverted) {
+        if (referrerUserId) {
+          // referrer_id on the referrals row is a buyers.id FK — any current
+          // row for that account works, since wallet_credit() resolves it
+          // back to the account's single canonical wallet, not this row.
+          const { data: referrerBuyerRow } = await supabase
+            .from('buyers')
+            .select('id')
+            .eq('user_id', referrerUserId)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle()
+
+          if (referrerBuyerRow) {
             // 'pending' until the order is actually delivered —
             // credit_referral_reward() (fired by a DB trigger on orders
             // when status flips to 'delivered') flips this to 'converted'
-            // and pays the referrer then.
+            // and pays the referrer then. One row per order now, not one
+            // ever — this is what makes the cashback recurring.
             await supabase.from('referrals').insert({
-              referrer_id: referrer.id,
+              referrer_id: referrerBuyerRow.id,
               referred_id: buyer.id,
               order_id:    order.id,
-              code_used:   refCode,
+              code_used:   codeUsed,
               status:      'pending',
             })
           }
         }
       } catch (refErr) {
         // Non-fatal — order still goes through
-        console.error('[orders] referral insert failed:', refErr)
+        console.error('[orders] referral tracking failed:', refErr)
       }
     }
 
