@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { JetBrains_Mono } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import { CartProvider } from "@/context/CartContext";
 import { LocationProvider } from "@/context/LocationContext";
 import { TYPEKIT_KIT_ID } from "@/lib/typekit";
@@ -78,6 +79,7 @@ export default function RootLayout({
             {children}
           </CartProvider>
         </LocationProvider>
+        <Analytics />
       </body>
     </html>
   );
