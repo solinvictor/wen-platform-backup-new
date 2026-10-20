@@ -131,7 +131,7 @@ export async function POST(req: NextRequest) {
       }
     } catch { /* guest checkout */ }
 
-    // Delivery credit (signup bonus / market-day cashback) — delivery-fee-only,
+    // Delivery credit (signup bonus / referral bonus) — delivery-fee-only,
     // capped at 25% of THIS order's delivery fee (the pricing meeting's
     // stacking guardrail). Looked up across every buyers row tied to this
     // account, not just whichever buyer row this order creates — see

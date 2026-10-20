@@ -443,7 +443,7 @@ function AccountClientInner({ userId, initialName, initialEmail, initialPhone, r
                   <p className="font-data text-[28px] font-bold">{fmtNaira(deliveryCredit ?? 0)}</p>
                 )}
                 <p className="text-[11.5px] text-white/50 mt-1.5">
-                  From your signup bonus and Market Day cashback — applies automatically to the delivery fee at checkout (up to 25% of it per order), and expires if unused.
+                  From your signup bonus and referral bonus — applies automatically to the delivery fee at checkout (up to 25% of it per order), and expires if unused.
                 </p>
               </div>
             )}
