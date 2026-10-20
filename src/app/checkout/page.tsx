@@ -347,11 +347,11 @@ export default function CheckoutPage() {
                         </div>
                         <div className="text-right">
                           {deliveryCalc.discount > 0 && (
-                            <p className="text-[12px] text-stone/40 line-through font-data">
+                            <p className="text-[12px] text-stone/40 line-through">
                               ₦{deliveryCalc.baseFee.toLocaleString('en-NG')}
                             </p>
                           )}
-                          <p className="font-data text-[16px] font-bold text-pepper-deep">
+                          <p className="text-[16px] font-bold text-pepper-deep">
                             ₦{deliveryCalc.finalFee.toLocaleString('en-NG')}
                           </p>
                         </div>
@@ -575,7 +575,7 @@ export default function CheckoutPage() {
                           <p className="text-soil text-[13px] font-medium truncate">{line.name}</p>
                           <p className="text-stone/45 text-[11px] font-data">×{line.quantity}</p>
                         </div>
-                        <p className="text-soil text-[13px] font-semibold font-data shrink-0">
+                        <p className="text-soil text-[13px] font-semibold shrink-0">
                           {line.price ? fmt(line.price * line.quantity) : '—'}
                         </p>
                       </div>

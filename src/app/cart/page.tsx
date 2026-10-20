@@ -77,7 +77,7 @@ export default function CartPage() {
                       {cat?.label ?? line.category}{line.unit ? ` · ${line.unit}` : ''}
                     </p>
                     {lineTotal != null && (
-                      <p className="text-pepper-deep text-[13px] font-bold font-data mt-1">{fmt(lineTotal)}</p>
+                      <p className="text-pepper-deep text-[13px] font-bold mt-1">{fmt(lineTotal)}</p>
                     )}
                   </div>
 

@@ -189,7 +189,7 @@ export default function TrackOrderPage() {
               {fmtFee(order.delivery_fee) && (
                 <div className="flex items-center justify-between text-[13px]">
                   <span className="text-stone/50">Delivery fee</span>
-                  <span className="text-soil font-semibold font-data">{fmtFee(order.delivery_fee)}</span>
+                  <span className="text-soil font-semibold">{fmtFee(order.delivery_fee)}</span>
                 </div>
               )}
             </div>

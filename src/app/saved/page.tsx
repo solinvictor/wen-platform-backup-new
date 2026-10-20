@@ -114,7 +114,7 @@ export default function SavedPage() {
                       <p className="text-soil text-[13.5px] font-semibold leading-snug truncate">{p.name}</p>
                     </Link>
                     <div className="flex items-center justify-between gap-2 mt-1.5">
-                      <span className="text-soil text-[14px] font-bold font-data">{fmt(p.price)}</span>
+                      <span className="text-soil text-[14px] font-bold">{fmt(p.price)}</span>
                       <button
                         type="button"
                         onClick={() => addOne({

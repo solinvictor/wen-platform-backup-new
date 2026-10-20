@@ -46,7 +46,7 @@ export function Footer() {
           </div>
           {COLS.map((col) => (
             <div key={col.title}>
-              <p className="font-data text-[10px] uppercase tracking-[0.18em] text-grain/40 mb-3">
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-grain/40 mb-3">
                 {col.title}
               </p>
               <ul className="space-y-2.5">
@@ -64,7 +64,7 @@ export function Footer() {
             </div>
           ))}
         </div>
-        <div className="border-t border-grain/10 pt-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-[12px] font-data text-grain/40">
+        <div className="border-t border-grain/10 pt-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-[12px] text-grain/40">
           <span>© {new Date().getFullYear()} WEN. Nigeria.</span>
           <span>Mon – Sat · 9:00 AM – 6:00 PM</span>
         </div>

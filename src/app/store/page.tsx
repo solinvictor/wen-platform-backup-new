@@ -328,7 +328,7 @@ function StoreInner() {
           </span>
           <span className="text-[14px] font-semibold">View basket</span>
           {cartTotal > 0 && (
-            <span className="ml-auto font-data text-[13px] font-bold tabular-nums opacity-95">
+            <span className="ml-auto text-[13px] font-bold tabular-nums opacity-95">
               ₦{cartTotal.toLocaleString('en-NG')}
             </span>
           )}

@@ -143,7 +143,7 @@ function CallbackContent() {
             <p className="text-[13px] text-soil leading-relaxed mb-3">{order?.product_summary}</p>
             <div className="pt-3 border-t border-soil/8 flex justify-between text-[15px] font-bold text-soil">
               <span>Amount paid</span>
-              <span className="font-data">{fmt(order?.amount_total)}</span>
+              <span>{fmt(order?.amount_total)}</span>
             </div>
           </div>
 

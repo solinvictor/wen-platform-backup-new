@@ -121,7 +121,7 @@ function OrderCard({ order }: { order: Order }) {
           <div className="flex items-center gap-3 flex-wrap">
             <DeliveryBadge type={order.delivery_type} />
             {order.delivery_fee != null && (
-              <span className="font-data text-[12px] text-stone/60">
+              <span className="font-bold text-[12px] text-stone/60">
                 ₦{order.delivery_fee.toLocaleString('en-NG')} delivery fee
               </span>
             )}
@@ -356,7 +356,7 @@ function AccountClientInner({ userId, initialName, initialEmail, initialPhone, r
           <div className="bg-white border border-soil/10 rounded-2xl px-5 py-4 mb-5">
             <p className="text-[12px] font-semibold text-stone/50 uppercase tracking-wider mb-2">Your referral link</p>
             <div className="flex items-center gap-2">
-              <p className="flex-1 font-data text-[13px] text-soil truncate bg-[#eef1f4] px-3 py-2 rounded-xl border border-soil/10">
+              <p className="flex-1 text-[13px] text-soil truncate bg-[#eef1f4] px-3 py-2 rounded-xl border border-soil/10">
                 {typeof window !== 'undefined' ? `${window.location.origin}/ref/${referralCode}` : `/ref/${referralCode}`}
               </p>
               <button
@@ -420,7 +420,7 @@ function AccountClientInner({ userId, initialName, initialEmail, initialPhone, r
               {walletLoading ? (
                 <Loader2 size={20} className="animate-spin text-white/60 mt-1" />
               ) : (
-                <p className="font-data text-[28px] font-bold">{fmtNaira(balance ?? 0)}</p>
+                <p className="text-[28px] font-bold">{fmtNaira(balance ?? 0)}</p>
               )}
               {initialName && (
                 <p className="text-[13px] font-medium text-white/70 mt-1.5">{initialName}</p>
@@ -440,7 +440,7 @@ function AccountClientInner({ userId, initialName, initialEmail, initialPhone, r
                 {deliveryCreditLoading ? (
                   <Loader2 size={20} className="animate-spin text-white/60 mt-1" />
                 ) : (
-                  <p className="font-data text-[28px] font-bold">{fmtNaira(deliveryCredit ?? 0)}</p>
+                  <p className="text-[28px] font-bold">{fmtNaira(deliveryCredit ?? 0)}</p>
                 )}
                 <p className="text-[11.5px] text-white/50 mt-1.5">
                   From your signup bonus and referral bonus — applies automatically to the delivery fee at checkout (up to 25% of it per order), and expires if unused.
@@ -503,7 +503,7 @@ function AccountClientInner({ userId, initialName, initialEmail, initialPhone, r
                           {new Date(txn.created_at).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}
                         </p>
                       </div>
-                      <p className={`font-data text-[13.5px] font-bold shrink-0 ${txn.type === 'credit' ? 'text-pepper-deep' : 'text-red-500'}`}>
+                      <p className={`text-[13.5px] font-bold shrink-0 ${txn.type === 'credit' ? 'text-pepper-deep' : 'text-red-500'}`}>
                         {txn.type === 'credit' ? '+' : '−'}{fmtNaira(txn.amount)}
                       </p>
                     </div>

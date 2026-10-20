@@ -148,7 +148,7 @@ export default function ProductDetailPage() {
         {/* Title + price */}
         <div className="flex items-start justify-between gap-4 mb-1.5">
           <h1 className="font-body text-soil text-[22px] font-bold leading-tight">{product.name}</h1>
-          <p className="font-data text-pepper text-[20px] font-bold shrink-0">{fmt(product.price)}</p>
+          <p className="text-pepper text-[20px] font-bold shrink-0">{fmt(product.price)}</p>
         </div>
 
         {/* Category + unit line */}
