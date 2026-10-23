@@ -54,6 +54,7 @@ export default function CheckoutPage() {
   const [locationSource, setLocationSource] = useState<LocationSource>(null)
   const [showMap, setShowMap]       = useState(false)
   const [marketDay, setMarketDay]   = useState<MarketDayInfo | null>(null)
+  const [wantsMarketDay, setWantsMarketDay] = useState(false)
   const [deliveryCalc, setDeliveryCalc] = useState<DeliveryCalc | null>(null)
   const [availableCredit, setAvailableCredit] = useState(0)
   const [walletBalance, setWalletBalance]     = useState(0)
@@ -85,8 +86,8 @@ export default function CheckoutPage() {
   useEffect(() => {
     if (!deliveryCoords) { setDeliveryCalc(null); return }
     const distKm = haversineKm(WEN_HQ.lat, WEN_HQ.lng, deliveryCoords.lat, deliveryCoords.lng)
-    setDeliveryCalc(calcDeliveryFee(distKm, marketDay?.isMarketDay ?? false))
-  }, [deliveryCoords, marketDay])
+    setDeliveryCalc(calcDeliveryFee(distKm, wantsMarketDay))
+  }, [deliveryCoords, wantsMarketDay])
 
   const hasPrices         = cartLines.some(l => l.price)
   const deliveryFee       = deliveryCalc?.finalFee ?? null
@@ -192,6 +193,7 @@ export default function CheckoutPage() {
             quantity: l.quantity,
           })),
           walletAmountRequested: useWallet ? walletAmountApplied : 0,
+          marketDayOptIn: wantsMarketDay,
         }),
       })
       const data = await res.json()
@@ -288,37 +290,43 @@ export default function CheckoutPage() {
                 <div className="px-5 pt-4">
                   <p className="text-[12px] font-semibold text-soil/50 uppercase tracking-wide mb-2.5">Delivery type</p>
                   <div className="grid grid-cols-2 gap-2.5 mb-1">
-                    <div className={`rounded-xl border px-3.5 py-3 ${
-                      !marketDay?.isMarketDay
-                        ? 'border-pepper bg-pepper/5'
-                        : 'border-soil/10 bg-grain-dim'
-                    }`}>
+                    <button
+                      type="button"
+                      onClick={() => setWantsMarketDay(false)}
+                      className={`text-left rounded-xl border px-3.5 py-3 transition-colors ${
+                        !wantsMarketDay
+                          ? 'border-pepper bg-pepper/5'
+                          : 'border-soil/10 bg-grain-dim'
+                      }`}
+                    >
                       <div className="flex items-center justify-between mb-1">
-                        <Truck size={15} className={!marketDay?.isMarketDay ? 'text-pepper-deep' : 'text-stone/40'} />
-                        {!marketDay?.isMarketDay && <Check size={14} className="text-pepper-deep" />}
+                        <Truck size={15} className={!wantsMarketDay ? 'text-pepper-deep' : 'text-stone/40'} />
+                        {!wantsMarketDay && <Check size={14} className="text-pepper-deep" />}
                       </div>
                       <p className="text-[13px] font-semibold text-soil">Standard</p>
                       <p className="text-[11px] text-stone/50 mt-0.5">We deliver as soon as possible</p>
-                    </div>
-                    <div className={`rounded-xl border px-3.5 py-3 ${
-                      marketDay?.isMarketDay
-                        ? 'border-pepper bg-pepper/5'
-                        : 'border-soil/10 bg-grain-dim opacity-60'
-                    }`}>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setWantsMarketDay(true)}
+                      className={`text-left rounded-xl border px-3.5 py-3 transition-colors ${
+                        wantsMarketDay
+                          ? 'border-pepper bg-pepper/5'
+                          : 'border-soil/10 bg-grain-dim'
+                      }`}
+                    >
                       <div className="flex items-center justify-between mb-1">
-                        <CalendarDays size={15} className={marketDay?.isMarketDay ? 'text-pepper-deep' : 'text-stone/40'} />
-                        {marketDay?.isMarketDay && <Check size={14} className="text-pepper-deep" />}
+                        <CalendarDays size={15} className={wantsMarketDay ? 'text-pepper-deep' : 'text-stone/40'} />
+                        {wantsMarketDay && <Check size={14} className="text-pepper-deep" />}
                       </div>
                       <p className="text-[13px] font-semibold text-soil">Market Day</p>
-                      <p className="text-[11px] text-stone/50 mt-0.5">
-                        {marketDay?.isMarketDay ? '20% off delivery + 5% cashback' : 'Wed & Sat — 20% off + 5% cashback'}
-                      </p>
-                    </div>
+                      <p className="text-[11px] text-stone/50 mt-0.5">20% off delivery + 5% cashback</p>
+                    </button>
                   </div>
                   <p className="text-[11px] text-stone/40 mb-2">
-                    {marketDay?.isMarketDay
-                      ? 'Today is a Market Day — the discount and cashback below are applied automatically.'
-                      : 'Market Day pricing applies automatically on Wednesdays and Saturdays.'}
+                    {wantsMarketDay
+                      ? `Delivered on ${marketDay?.nextMarketDayWeekday ?? 'the next Market Day'} — the discount and cashback below apply.`
+                      : 'Market Day delivery can be picked any day — it’s scheduled for the next Wednesday or Saturday run.'}
                   </p>
                 </div>
                 <div className="px-5 pb-4">

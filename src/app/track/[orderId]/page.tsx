@@ -175,7 +175,7 @@ export default function TrackOrderPage() {
                       )}
                       {order.market_day && (
                         <span className="block text-pepper text-[11px] font-medium mt-1">
-                          Market Day order · {order.discount_amount ? `₦${Number(order.discount_amount).toLocaleString('en-NG')} saved` : 'next-day delivery'}
+                          Market Day delivery · 20% off delivery + 5% cashback
                         </span>
                       )}
                     </p>

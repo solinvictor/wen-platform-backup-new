@@ -115,10 +115,10 @@ export default function CartPage() {
           {/* Sticky checkout bar */}
           <div className="sticky bottom-0 border-t border-soil/8 bg-white px-4 sm:px-6 pt-4 pb-6 space-y-3">
             <div className="max-w-2xl mx-auto w-full space-y-3">
-              {marketDay?.isMarketDay && (
+              {marketDay && (
                 <div className="flex items-center justify-between gap-3 rounded-xl bg-pepper/8 px-3.5 py-2.5 text-[12px]">
                   <span className="font-medium text-pepper-deep">
-                    Market Day · 20% off delivery + 5% cashback
+                    Market Day · 20% off delivery + 5% cashback — pick it at checkout
                   </span>
                 </div>
               )}

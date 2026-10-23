@@ -8,9 +8,7 @@ import { getMarketDayInfo, type MarketDayInfo } from '@/lib/market-day'
 export function MarketDayBanner({ compact = false }: { compact?: boolean }) {
   const [marketDay] = useState<MarketDayInfo>(() => getMarketDayInfo())
 
-  const message = marketDay.isMarketDay
-    ? `Market Day · Order today, receive it tomorrow · 20% off delivery + 5% cashback · Fresh produce delivered on ${marketDay.deliveryWeekday}`
-    : `Market Day returns Wednesday and Saturday · 20% off delivery + 5% cashback · Fresh produce, selected and delivered by WEN`
+  const message = `Market Day · Order any day, choose Market Day delivery at checkout · 20% off delivery + 5% cashback · Next delivered on ${marketDay.nextMarketDayWeekday}`
 
   return (
     <section aria-label="Market Day offer" className="w-full min-w-0 overflow-hidden bg-soil text-white">
@@ -35,7 +33,7 @@ export function MarketDayBanner({ compact = false }: { compact?: boolean }) {
           </div>
         ))}
       </div>
-      <p className="sr-only">{message}. The saving is applied automatically at checkout.</p>
+      <p className="sr-only">{message}. Select Market Day delivery at checkout to get the saving.</p>
     </section>
   )
 }

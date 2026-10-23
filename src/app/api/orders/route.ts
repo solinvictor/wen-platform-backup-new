@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
       fullName, phoneNumber, email, location, landmark,
       deliveryLat, deliveryLng,
       locationSource, buyerType, items, notes,
-      walletAmountRequested,
+      walletAmountRequested, marketDayOptIn,
     } = body as {
       fullName?: string
       phoneNumber?: string
@@ -39,6 +39,7 @@ export async function POST(req: NextRequest) {
       items?: CartItem[]
       notes?: string
       walletAmountRequested?: number
+      marketDayOptIn?: boolean
     }
 
     if (
@@ -112,13 +113,20 @@ export async function POST(req: NextRequest) {
       itemsTotal += Number(product.price) * item.quantity
     }
 
+    // Market Day is a DELIVERY schedule the buyer opts into, not a
+    // restriction on which day they're allowed to order — getMarketDayInfo()
+    // always looks forward to the next Wednesday/Saturday regardless of what
+    // day it is today. We never trust a client-sent date for this: only the
+    // boolean "did the buyer choose Market Day delivery" crosses the wire,
+    // and the actual delivery date is always computed here.
+    const isMarketDayOrder = marketDayOptIn === true
     const marketDay = getMarketDayInfo()
 
     // Distance-based delivery: ₦200/km from Welfare Quarters HQ
     // 20% off delivery fee on Market Days; cashback (not a basket discount)
     // is credited separately once the order is paid — see credit_market_day_cashback().
     const distanceKm = haversineKm(WEN_HQ.lat, WEN_HQ.lng, deliveryLat, deliveryLng)
-    const delivery   = calcDeliveryFee(distanceKm, marketDay.isMarketDay)
+    const delivery   = calcDeliveryFee(distanceKm, isMarketDayOrder)
 
     let userId: string | null = null
     try {
@@ -224,11 +232,11 @@ export async function POST(req: NextRequest) {
       delivery_fee:             delivery.finalFee,
       delivery_distance_km:     delivery.distanceKm,
       delivery_discount_amount: delivery.discount,
-      market_day:               marketDay.marketDay,
+      market_day:               isMarketDayOrder ? marketDay.nextMarketDayWeekday : null,
       discount_amount:          0,
       delivery_credit_applied:  deliveryCreditApplied,
       wallet_amount_applied:    walletAmountApplied,
-      expected_delivery_date:   marketDay.deliveryDate,
+      expected_delivery_date:   isMarketDayOrder ? marketDay.nextMarketDayDate : null,
       order_ref:                orderRef,
       amount_total:             amountTotal,
       status:                   fullyPaidByCredit ? 'paid' : 'pending_payment',
@@ -252,7 +260,7 @@ export async function POST(req: NextRequest) {
         const { error } = await supabase.rpc('redeem_wallet_applied', { p_order_id: order.id })
         if (error) console.error('[orders] redeem_wallet_applied (fully-paid) failed:', error.message)
       }
-      if (marketDay.marketDay) {
+      if (isMarketDayOrder) {
         const { error } = await supabase.rpc('credit_market_day_cashback', { p_order_id: order.id })
         if (error) console.error('[orders] credit_market_day_cashback (fully-paid) failed:', error.message)
       }
@@ -264,7 +272,7 @@ export async function POST(req: NextRequest) {
         orderRef, productSummary, amountTotal,
         deliveryFee: delivery.finalFee,
         deliveryCreditApplied, walletAmountApplied,
-        expectedDeliveryDate: marketDay.deliveryDate,
+        expectedDeliveryDate: isMarketDayOrder ? marketDay.nextMarketDayDate : null,
       })
       try {
         await sendEmail({ to: email.trim(), subject, html })
@@ -356,7 +364,7 @@ export async function POST(req: NextRequest) {
       deliveryCreditApplied,
       walletAmountApplied,
       fullyPaidByCredit,
-      expectedDeliveryDate: marketDay.deliveryDate,
+      expectedDeliveryDate: isMarketDayOrder ? marketDay.nextMarketDayDate : null,
       email:                email.trim(),
     })
 
