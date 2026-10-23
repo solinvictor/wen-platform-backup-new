@@ -11,7 +11,7 @@ import {
 import { Logo } from '@/components/Logo'
 import { MarketDayBanner } from '@/components/MarketDayBanner'
 import { getMarketDayInfo, type MarketDayInfo } from '@/lib/market-day'
-import { haversineKm, calcDeliveryFee, WEN_HQ, type DeliveryCalc } from '@/lib/delivery'
+import { haversineKm, calcDeliveryFee, isWithinServiceArea, SERVICE_AREA_LABEL, WEN_HQ, type DeliveryCalc } from '@/lib/delivery'
 import { AddressAutocomplete, type AddressSuggestion } from '@/components/AddressAutocomplete'
 import { validatePhone } from '@/lib/validate'
 
@@ -164,6 +164,15 @@ export default function CheckoutPage() {
   }
 
   function handleAddressSelect(suggestion: AddressSuggestion) {
+    if (!isWithinServiceArea(suggestion.lat, suggestion.lng)) {
+      setDeliveryCoords(null)
+      setLocationSource(null)
+      setErrors(current => ({
+        ...current,
+        address: `Delivery isn't available there yet — we currently deliver within ${SERVICE_AREA_LABEL}, and we'll be expanding soon.`,
+      }))
+      return
+    }
     setDeliveryCoords({ lat: suggestion.lat, lng: suggestion.lng })
     setLocationSource('address')
     setErrors(current => ({ ...current, address: undefined }))
@@ -244,11 +253,20 @@ export default function CheckoutPage() {
           <LocationMapPicker
             initialLocation={deliveryCoords ? { ...deliveryCoords, label: form.address } : undefined}
             onConfirm={(coords, label) => {
+              setShowMap(false)
+              if (!isWithinServiceArea(coords.lat, coords.lng)) {
+                setDeliveryCoords(null)
+                setLocationSource(null)
+                setErrors(e => ({
+                  ...e,
+                  address: `Delivery isn't available there yet — we currently deliver within ${SERVICE_AREA_LABEL}, and we'll be expanding soon.`,
+                }))
+                return
+              }
               setDeliveryCoords(coords)
               setLocationSource('pin')
               setForm(f => ({ ...f, address: f.address.trim() ? f.address : label }))
               setErrors(e => ({ ...e, address: undefined }))
-              setShowMap(false)
             }}
             onClose={() => setShowMap(false)}
           />

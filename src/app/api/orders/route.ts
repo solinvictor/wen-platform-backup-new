@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { getMarketDayInfo } from '@/lib/market-day'
-import { haversineKm, calcDeliveryFee, WEN_HQ } from '@/lib/delivery'
+import { haversineKm, calcDeliveryFee, isWithinServiceArea, SERVICE_AREA_LABEL, WEN_HQ } from '@/lib/delivery'
 import { sendEmail } from '@/lib/email'
 import { orderReceiptEmail } from '@/lib/email-templates'
 
@@ -75,6 +75,15 @@ export async function POST(req: NextRequest) {
     }
     if (items.some(i => !Number.isInteger(i.quantity) || i.quantity < 1 || i.quantity > 100)) {
       return NextResponse.json({ error: 'Please check the quantities in your cart and try again.' }, { status: 400 })
+    }
+    // WEN currently only delivers within Makurdi, Benue State — never trust
+    // the client's own geofence check, re-verify here before creating
+    // anything. See isWithinServiceArea() in lib/delivery.ts.
+    if (!isWithinServiceArea(deliveryLat, deliveryLng)) {
+      return NextResponse.json(
+        { error: `Delivery isn't available there yet — we currently deliver within ${SERVICE_AREA_LABEL}, and we'll be expanding soon.` },
+        { status: 400 }
+      )
     }
 
     const supabase = createAdminClient()

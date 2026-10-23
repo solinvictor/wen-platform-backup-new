@@ -12,6 +12,17 @@ export const DELIVERY_RATE_PER_KM  = 200   // ₦ per km
 export const MARKET_DAY_DELIVERY_DISCOUNT_PERCENT = 20
 export const MIN_DELIVERY_FEE = 300        // floor — never charge less than ₦300
 
+// WEN currently only delivers within Makurdi, Benue State. Gboko and Otukpo
+// — the next-nearest towns — are ~90-100km from HQ, so this comfortably
+// covers Makurdi town and its immediate environs without reaching them.
+export const SERVICE_AREA_RADIUS_KM = 25
+export const SERVICE_AREA_LABEL = 'Makurdi, Benue State'
+
+/** Whether a point is inside WEN's current delivery area. */
+export function isWithinServiceArea(lat: number, lng: number): boolean {
+  return haversineKm(WEN_HQ.lat, WEN_HQ.lng, lat, lng) <= SERVICE_AREA_RADIUS_KM
+}
+
 /** Haversine formula — straight-line distance in km between two lat/lng points */
 export function haversineKm(
   lat1: number, lng1: number,
