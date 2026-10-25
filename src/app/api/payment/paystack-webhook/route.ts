@@ -3,6 +3,7 @@ import crypto from 'crypto'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendEmail } from '@/lib/email'
 import { orderReceiptEmail } from '@/lib/email-templates'
+import { sendTelegramAlert, newOrderAlertText } from '@/lib/telegram'
 
 interface PaystackAuthorization {
   authorization_code?: string
@@ -156,8 +157,8 @@ export async function POST(req: NextRequest) {
     .from('orders')
     .select(`
       id, status, amount_total, order_ref, product_summary, delivery_fee,
-      delivery_credit_applied, wallet_amount_applied, expected_delivery_date,
-      buyers ( email )
+      delivery_credit_applied, wallet_amount_applied, expected_delivery_date, market_day,
+      buyers ( email, full_name, phone_number, location )
     `)
     .eq('order_ref', reference)
     .single()
@@ -213,9 +214,10 @@ export async function POST(req: NextRequest) {
       console.error('[paystack-webhook] redeem_wallet_applied failed:', walletRedeemError.message)
     }
 
-    const orderBuyers = (order as { buyers?: { email?: string } | { email?: string }[] }).buyers
-    const buyerEmail = Array.isArray(orderBuyers) ? orderBuyers[0]?.email : orderBuyers?.email
-    if (buyerEmail) {
+    type OrderBuyer = { email?: string; full_name?: string; phone_number?: string; location?: string }
+    const orderBuyers = (order as { buyers?: OrderBuyer | OrderBuyer[] }).buyers
+    const buyer = Array.isArray(orderBuyers) ? orderBuyers[0] : orderBuyers
+    if (buyer?.email) {
       const { subject, html } = orderReceiptEmail({
         orderRef:              order.order_ref,
         productSummary:        order.product_summary,
@@ -226,10 +228,25 @@ export async function POST(req: NextRequest) {
         expectedDeliveryDate:  order.expected_delivery_date,
       })
       try {
-        await sendEmail({ to: buyerEmail, subject, html })
+        await sendEmail({ to: buyer.email, subject, html })
       } catch (err) {
         console.error('[paystack-webhook] receipt email failed:', err)
       }
+    }
+    try {
+      await sendTelegramAlert(newOrderAlertText({
+        orderRef:              order.order_ref,
+        productSummary:        order.product_summary,
+        amountTotal:           Number(order.amount_total),
+        deliveryFee:           order.delivery_fee != null ? Number(order.delivery_fee) : null,
+        isMarketDay:           !!order.market_day,
+        expectedDeliveryDate:  order.expected_delivery_date,
+        buyerName:             buyer?.full_name ?? null,
+        buyerPhone:            buyer?.phone_number ?? null,
+        location:              buyer?.location ?? null,
+      }))
+    } catch (err) {
+      console.error('[paystack-webhook] telegram alert failed:', err)
     }
   }
 

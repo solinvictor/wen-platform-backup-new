@@ -5,6 +5,7 @@ import { getMarketDayInfo } from '@/lib/market-day'
 import { haversineKm, calcDeliveryFee, isWithinServiceArea, SERVICE_AREA_LABEL, WEN_HQ } from '@/lib/delivery'
 import { sendEmail } from '@/lib/email'
 import { orderReceiptEmail } from '@/lib/email-templates'
+import { sendTelegramAlert, newOrderAlertText } from '@/lib/telegram'
 
 interface CartItem {
   id: string
@@ -287,6 +288,19 @@ export async function POST(req: NextRequest) {
         await sendEmail({ to: email.trim(), subject, html })
       } catch (err) {
         console.error('[orders] receipt email (fully-paid) failed:', err)
+      }
+      try {
+        await sendTelegramAlert(newOrderAlertText({
+          orderRef, productSummary, amountTotal,
+          deliveryFee: delivery.finalFee,
+          isMarketDay: isMarketDayOrder,
+          expectedDeliveryDate: isMarketDayOrder ? marketDay.nextMarketDayDate : null,
+          buyerName: fullName.trim(),
+          buyerPhone: phoneNumber.trim(),
+          location: location.trim(),
+        }))
+      } catch (err) {
+        console.error('[orders] telegram alert (fully-paid) failed:', err)
       }
     }
 
