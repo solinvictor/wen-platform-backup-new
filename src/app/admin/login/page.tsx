@@ -23,7 +23,7 @@ export default function AdminLoginPage() {
       setLoading(false)
       return
     }
-    router.push('/admin/farmers')
+    router.push('/admin')
     router.refresh()
   }
 

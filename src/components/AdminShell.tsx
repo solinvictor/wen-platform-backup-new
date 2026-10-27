@@ -13,9 +13,11 @@ import {
   Menu,
   X,
   Package,
+  LayoutDashboard,
 } from 'lucide-react'
 
 const ADMIN_LINKS = [
+  { href: '/admin', label: 'Dashboard', icon: LayoutDashboard, short: 'Home' },
   { href: '/admin/orders', label: 'Orders', icon: ClipboardList, short: 'Orders' },
   { href: '/admin/products', label: 'Products', icon: Package, short: 'Items' },
   { href: '/admin/farmers', label: 'Farmers', icon: Users, short: 'Farm' },
@@ -45,7 +47,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         <nav className="flex-1 px-3 space-y-1">
           {ADMIN_LINKS.map((link) => {
             const Icon = link.icon
-            const active = pathname === link.href || pathname.startsWith(link.href + '/')
+            const active = pathname === link.href || (link.href !== '/admin' && pathname.startsWith(link.href + '/'))
             return (
               <Link
                 key={link.href}
@@ -139,10 +141,10 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
         {/* Mobile bottom tabs — thumb friendly */}
         <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white border-t border-soil/10 pb-[env(safe-area-inset-bottom)]">
-          <div className="grid grid-cols-5 max-w-lg mx-auto">
+          <div className="grid grid-cols-6 max-w-lg mx-auto">
             {ADMIN_LINKS.map((link) => {
               const Icon = link.icon
-              const active = pathname === link.href || pathname.startsWith(link.href + '/')
+              const active = pathname === link.href || (link.href !== '/admin' && pathname.startsWith(link.href + '/'))
               return (
                 <Link
                   key={link.href}
